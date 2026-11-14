@@ -1,7 +1,7 @@
 // All quantities are illustrative game units, not NASA mission specifications.
 export const INITIAL_GAME = {
   day: 1,
-  stamina: 100,
+  stamina: 5,
   suitOxygen: 100,
   satiety: 100,
   resources: { oxygen: 82, food: 76, power: 68, water: 54, wastewater: 12 },
@@ -22,7 +22,7 @@ function evaluate(game) {
   const r = game.resources;
   if (game.crew.some((person) => person.health <= 0)) return 'failed';
   if (r.oxygen <= 0 || r.food <= 0 || r.power <= 0) return 'failed';
-  if (game.day >= 30) return game.exploration.beacon ? 'won' : 'failed';
+  if (game.day > 14) return game.exploration.beacon ? 'won' : 'failed';
   return null;
 }
 
@@ -91,7 +91,7 @@ export function takeAction(game, action) {
   next.ended = evaluate(next);
   if (next.ended === 'won') next.log = appendLog(next, 'Mission accomplished!', 'The crew completed a 30-day lunar expedition. Everyone made it home safe.', 'good');
   if (next.ended === 'failed') {
-    const relayMissing = next.day >= 30 && !next.exploration.beacon;
+    const relayMissing = next.day > 14 && !next.exploration.beacon;
     next.log = appendLog(next, 'Mission ended', relayMissing ? 'The mission reached its deadline without restoring the Earth communications and navigation relay.' : 'A critical supply or crew health reached zero. Review the timeline and try a new strategy.', 'bad');
   }
   return next;
@@ -113,9 +113,10 @@ export function manageBase(game, action) {
     title = 'Oxygen generator cycle complete';
     detail = 'Processed water and power were converted into stored habitat oxygen.';
   } else if (action === 'refillSuit') {
-    if (stock.oxygen < 12 || next.suitOxygen >= 100) return game;
-    stock.oxygen -= 12;
-    next.suitOxygen = clamp(next.suitOxygen + 30);
+    const refillCost = Math.ceil(stock.oxygen / 5);
+    if (stock.oxygen <= 0 || next.suitOxygen >= 100) return game;
+    stock.oxygen -= refillCost;
+    next.suitOxygen = 100;
     title = 'Spacesuit oxygen topped up';
     detail = 'The suit tank was refilled from the habitat oxygen reserve.';
   } else if (action === 'eat') {

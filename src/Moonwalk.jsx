@@ -14,7 +14,7 @@ const DIRECTIONS = {
   ArrowRight: [4, 0, 'right'], d: [4, 0, 'right'], D: [4, 0, 'right'],
 };
 
-export default function Moonwalk({ day, foundSites, onInteract, onEnterBase, suitOxygen = 100, onStep, disabled = false }) {
+export default function Moonwalk({ day, foundSites, onInteract, onEnterBase, suitOxygen = 100, onStep, disabled = false, guideBase = false, guideTaskTitle = '', guideSiteId = null }) {
   const [walker, setWalker] = useState({ x: 19, y: 59, facing: 'right', step: 0 });
   const walkerRef = useRef(walker);
   const move = (direction) => {
@@ -60,6 +60,12 @@ export default function Moonwalk({ day, foundSites, onInteract, onEnterBase, sui
 
   const near = nearestSite();
   const foundCount = Object.values(foundSites).filter(Boolean).length;
+  const firstDaysTargets = ['beacon', 'sample', 'ice'];
+  const guideTaskId = guideSiteId || (day >= 1 && day <= firstDaysTargets.length ? firstDaysTargets[day - 1] : null);
+  const guideSite = guideTaskId && !foundSites[guideTaskId] ? SITES.find((site) => site.id === guideTaskId) : null;
+  const guideHome = guideBase && !guideSite ? { x: 15, y: 35 } : null;
+  const guideTarget = guideSite || guideHome;
+  const guideArrived = Boolean(guideSite ? near?.id === guideSite.id : guideHome && nearBase);
   return <section className="moonwalk panel" aria-label="Lunar surface exploration game">
     <div className="moonwalk-header">
       <div><p className="eyebrow">SURFACE EXPLORATION · SOL {String(day).padStart(2, '0')}</p><h2>Moonwalk</h2><p className="moonwalk-subtitle">Step out of the habitat and explore the lunar terrain.</p></div>
@@ -70,11 +76,12 @@ export default function Moonwalk({ day, foundSites, onInteract, onEnterBase, sui
       <div className="world-stars">·　　✦　　　　　　·　　　✧　　　　·　　✦　　　　·</div>
       <div className="world-earth"><i/></div><div className="world-ridge ridge-one"/><div className="world-ridge ridge-two"/>
       <div className="world-ground"><span className="crater crater-one"/><span className="crater crater-two"/><span className="crater crater-three"/><span className="ground-glow"/></div>
-      <div className={`world-base ${nearBase ? 'base-nearby' : ''}`}><span className="base-dome"/><span className="base-module"/><span className="base-window"/><span className="base-lamp"/><small>HAB 01</small>{nearBase && <button className="base-entry-button" onClick={(event) => { event.stopPropagation(); onEnterBase?.(); }} disabled={disabled}><Orbit size={15}/><span>R · Enter base</span></button>}</div>
+      {guideTarget&&<><svg className="mission-guide-route" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><defs><marker id="mission-guide-arrow" markerWidth="5" markerHeight="5" refX="3" refY="2.5" orient="auto"><path d="M0,0 L5,2.5 L0,5 z"/></marker></defs><path className="mission-guide-route-shadow" d={`M ${walker.x} ${walker.y} L ${guideTarget.x} ${guideTarget.y}`}/><path className="mission-guide-route-line" d={`M ${walker.x} ${walker.y} L ${guideTarget.x} ${guideTarget.y}`} markerEnd="url(#mission-guide-arrow)"/></svg><div className={`mission-guide-card ${guideArrived?'guide-arrived':''}`}><span className="mission-guide-icon">{guideArrived?'✓':'➜'}</span><div><small>DAY {day} · MISSION GUIDE</small><b>{guideSite?(guideArrived?'You found it! Press E':`Follow the glowing path to ${guideSite.name}`):(guideArrived?'At the habitat! Press R to enter':`Follow the glowing path back to base`)}</b><i>{guideSite?(guideArrived?'Press E to begin today’s task.':'Move with WASD or arrows to follow the light.'):(guideArrived?`Enter the base to ${guideTaskTitle.toLowerCase()}.`:`Then go inside to ${guideTaskTitle.toLowerCase()}.`)}</i></div></div></>}
+      <div className={`world-base ${nearBase ? 'base-nearby' : ''} ${guideHome?'base-guide-target':''}`}><span className="base-dome"/><span className="base-module"/><span className="base-window"/><span className="base-lamp"/><small>HAB 01</small>{nearBase && <button className="base-entry-button" onClick={(event) => { event.stopPropagation(); onEnterBase?.(); }} disabled={disabled}><Orbit size={15}/><span>R · Enter base</span></button>}</div>
       <div className="world-solar-field" role="img" aria-label="Solar panel array powering the lunar habitat"><div className="world-solar-panel"><i/><i/><i/><i/><i/><i/><i/><i/></div><span className="solar-support"/><span className="solar-field-label">SOLAR ARRAY</span><span className="solar-glint"/></div>
       <div className="world-rover"><span/><i/><b/></div>
       <div className="world-flag"><span/><i/></div>
-      {SITES.map((site) => { const Icon = site.icon; const done = foundSites[site.id]; const isNear = near?.id === site.id; return <div className={`world-site ${site.tone} ${done ? 'site-done' : ''} ${isNear ? 'site-near' : ''}`} key={site.id} style={{ left: `${site.x}%`, top: `${site.y}%` }}>
+      {SITES.map((site) => { const Icon = site.icon; const done = foundSites[site.id]; const isNear = near?.id === site.id; const isGuideTarget=guideSite?.id===site.id; return <div className={`world-site ${site.tone} ${done ? 'site-done' : ''} ${isNear ? 'site-near' : ''} ${isGuideTarget?'site-guide-target':''}`} key={site.id} style={{ left: `${site.x}%`, top: `${site.y}%` }}>
         <span className="site-pin"><Icon size={16}/>{done && <b>✓</b>}</span><span className="site-label">{done ? 'COMPLETE' : site.name.toUpperCase()}</span>{isNear && <span className="site-prompt">E</span>}
       </div>; })}
       <div className={`astronaut facing-${walker.facing}`} style={{ left: `${walker.x}%`, top: `${walker.y}%` }} aria-label="Your astronaut">

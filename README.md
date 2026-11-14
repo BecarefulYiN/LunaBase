@@ -20,7 +20,7 @@ The opening briefing introduces water, oxygen, air filtration, power, and food. 
 
 Select **Enter base** to open the habitat interior. The oxygen generator converts water and power into stored base oxygen; use the suit dock to transfer base oxygen into the EVA suit. The air scrubber improves clean-air quality. Eat a ration to restore satiety. Moving outside and completing field work consumes suit oxygen, so return to the base to recharge before it runs out.
 
-Use **Advance one sol** to progress the survival simulation. Supplies decrease and crew condition shifts each day; **Repack food supplies** restores some food at a morale cost. The crew starts with 100 stamina; completing each field task uses 25. Keep critical resources above zero and reach Sol 30.
+Use **Advance one sol** to progress the survival simulation. Supplies decrease and crew condition shifts each day; **Repack food supplies** restores some food at a morale cost. The crew starts with 100 stamina; completing each field task uses 25. Keep critical resources above zero and complete the 14-sol mission.
 
 All displayed rates and quantities are illustrative balancing values for this game. They are not NASA facts, mission specifications, or engineering guidance.
 
@@ -41,3 +41,4 @@ LunaBase/
 ```
 # LunaBase
  aba2a4a9667c4f7fd24f0b9514dc9221dd894967
+
