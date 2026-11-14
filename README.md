@@ -1,3 +1,4 @@
+
 # LunaBase
 
 A playable lunar-base survival game prototype built with React and JavaScript. Learn the ECLSS basics in the opening briefing, then explore a walkable lunar surface and complete field objectives while tracking oxygen, food, power, water, and crew condition.
@@ -36,3 +37,5 @@ LunaBase/
     ├── main.jsx      # React entry point
     └── styles.css    # Responsive visual design
 ```
+# LunaBase
+ aba2a4a9667c4f7fd24f0b9514dc9221dd894967
