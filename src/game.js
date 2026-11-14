@@ -2,8 +2,10 @@
 export const INITIAL_GAME = {
   day: 1,
   stamina: 100,
-  resources: { oxygen: 82, food: 76, power: 68, water: 54 },
-  systems: { water: 72, air: 84, oxygen: 62, wear: 18 },
+  suitOxygen: 100,
+  satiety: 100,
+  resources: { oxygen: 82, food: 76, power: 68, water: 54, wastewater: 12 },
+  systems: { water: 72, air: 84, oxygen: 62, wear: 18, comms: 0 },
   exploration: { ice: false, sample: false, beacon: false },
   crew: [
     { name: 'Maya Chen', role: 'Commander', health: 92, morale: 82, color: 'coral' },
@@ -20,7 +22,7 @@ function evaluate(game) {
   const r = game.resources;
   if (game.crew.some((person) => person.health <= 0)) return 'failed';
   if (r.oxygen <= 0 || r.food <= 0 || r.power <= 0) return 'failed';
-  if (game.day >= 30) return 'won';
+  if (game.day >= 30) return game.exploration.beacon ? 'won' : 'failed';
   return null;
 }
 
@@ -63,12 +65,14 @@ export function takeAction(game, action) {
     next.day += 1;
     r.oxygen = clamp(r.oxygen - 7 + Math.round(next.systems.oxygen * 0.08));
     r.food = clamp(r.food - 5);
-    r.power = clamp(r.power - 6 + (r.power > 20 ? 2 : 0));
+    r.power = clamp(r.power - (next.systems.comms ? 4 : 5) + (next.systems.wear < 75 ? 2 : 0));
     r.water = clamp(r.water - 3 + Math.round(next.systems.water * 0.04));
-    next.systems.wear = clamp(next.systems.wear + 2);
+    r.wastewater = clamp((r.wastewater || 0) + 2);
+    next.systems.wear = clamp(next.systems.wear + (next.systems.comms ? 2 : 3));
+    next.satiety = clamp(next.satiety - 25);
     next.crew.forEach((person) => {
-      person.health = clamp(person.health - (r.oxygen < 25 || r.food < 20 ? 8 : 1) - (next.systems.air < 30 ? 4 : 0));
-      person.morale = clamp(person.morale - 3 - (r.food < 20 ? 3 : 0));
+      person.health = clamp(person.health - (r.oxygen < 25 || r.food < 20 || next.satiety < 25 ? 8 : 1) - (next.systems.air < 30 ? 4 : 0));
+      person.morale = clamp(person.morale - (next.systems.comms ? 3 : 5) - (r.food < 20 ? 3 : 0));
     });
     // Running low on power reduces system performance, creating a resource trade-off.
     if (r.power < 18) {
@@ -76,7 +80,7 @@ export function takeAction(game, action) {
       next.systems.water = clamp(next.systems.water - 4);
       next.systems.air = clamp(next.systems.air - 5);
     } else {
-      next.systems.air = clamp(next.systems.air - (next.systems.wear > 75 ? 4 : 1));
+      next.systems.air = clamp(next.systems.air - (next.systems.wear > 75 ? 5 : 3));
     }
     title = `Sol ${next.day} systems report`;
     message = 'Daily consumption tallied. Life-support performance and crew condition updated.';
@@ -86,6 +90,62 @@ export function takeAction(game, action) {
   next.log = appendLog(next, title, message, tone);
   next.ended = evaluate(next);
   if (next.ended === 'won') next.log = appendLog(next, 'Mission accomplished!', 'The crew completed a 30-day lunar expedition. Everyone made it home safe.', 'good');
-  if (next.ended === 'failed') next.log = appendLog(next, 'Mission ended', 'A critical supply or crew health reached zero. Review the timeline and try a new strategy.', 'bad');
+  if (next.ended === 'failed') {
+    const relayMissing = next.day >= 30 && !next.exploration.beacon;
+    next.log = appendLog(next, 'Mission ended', relayMissing ? 'The mission reached its deadline without restoring the Earth communications and navigation relay.' : 'A critical supply or crew health reached zero. Review the timeline and try a new strategy.', 'bad');
+  }
+  return next;
+}
+
+export function manageBase(game, action) {
+  if (game.ended) return game;
+  const next = structuredClone(game);
+  const stock = next.resources;
+  let title = '';
+  let detail = '';
+  let tone = 'good';
+
+  if (action === 'generateOxygen') {
+    if (stock.water < 6 || stock.power < 5 || stock.oxygen >= 100) return game;
+    stock.water -= 6;
+    stock.power -= 5;
+    stock.oxygen = clamp(stock.oxygen + 18);
+    title = 'Oxygen generator cycle complete';
+    detail = 'Processed water and power were converted into stored habitat oxygen.';
+  } else if (action === 'refillSuit') {
+    if (stock.oxygen < 12 || next.suitOxygen >= 100) return game;
+    stock.oxygen -= 12;
+    next.suitOxygen = clamp(next.suitOxygen + 30);
+    title = 'Spacesuit oxygen topped up';
+    detail = 'The suit tank was refilled from the habitat oxygen reserve.';
+  } else if (action === 'eat') {
+    if (stock.food < 8 || next.satiety >= 100) return game;
+    stock.food -= 8;
+    next.satiety = clamp(next.satiety + 30);
+    title = 'Meal break';
+    detail = 'The crew ate a ration and recovered some satiety.';
+  } else if (action === 'purifyAir') {
+    if (stock.power < 5 || next.systems.air >= 100) return game;
+    stock.power -= 5;
+    next.systems.air = clamp(next.systems.air + 28);
+    title = 'Cabin air filtered';
+    detail = 'The air scrubber used stored power to improve cabin air quality.';
+  } else if (action === 'purifyWater') {
+    if (stock.wastewater < 5 || stock.power < 4 || stock.water >= 100) return game;
+    stock.wastewater -= 5;
+    stock.power -= 4;
+    stock.water = clamp(stock.water + 4);
+    title = 'Recovered water purified';
+    detail = 'Game assumption: 5 units of collected wastewater yield 4 units of reusable clean water after filtration.';
+  } else if (action === 'chargePower') {
+    if (stock.power >= 100) return game;
+    stock.power = clamp(stock.power + 20);
+    title = 'Solar array charged habitat batteries';
+    detail = 'Illustrative game action: the solar array added 20 units to stored power.';
+  } else {
+    return game;
+  }
+
+  next.log = appendLog(next, title, detail, tone);
   return next;
 }

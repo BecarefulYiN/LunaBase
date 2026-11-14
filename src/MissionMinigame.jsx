@@ -1,13 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { BatteryCharging, ChevronRight, Footprints, Radio, RotateCcw, Search, Snowflake, X } from './Icons.jsx';
+import { BatteryCharging, ChevronRight, Droplets, Footprints, Radio, RotateCcw, Search, Snowflake, Sun, X } from './Icons.jsx';
 
 const DETAILS = {
+  purifyWater: { title: 'Water recovery cycle', subtitle: 'Match each contaminant with the right filter.', Icon: Droplets, steps: ['Read the contaminant shown on the sample.', 'Choose the filter media that removes it.', 'Clear three samples to finish purification.'] },
+  chargePower: { title: 'Solar array circuit', subtitle: 'Rotate the power couplers to route sunlight into the battery.', Icon: Sun, steps: ['Click the couplers to rotate them.', 'Connect the incoming solar line through all couplers.', 'Power reaches storage when the circuit is complete.'] },
   ice: { title: 'Water ice extraction', subtitle: 'Stabilize the heater, then collect a clean ice core.', Icon: Snowflake, steps: ['Watch the temperature needle sweep across the meter.', 'Click Collect ice core when the needle enters the green SAFE ZONE.', 'Too early or too late? Wait for the next pass and try again.'] },
   sample: { title: 'Moon-rock sample', subtitle: 'Memorize the scanner sequence and repeat it to reveal the rock core.', Icon: Search, steps: ['Watch the four scanner lights in order.', 'After they go dark, tap the matching colors in the same order.', 'When the rock appears in the tray, secure the sample to finish.'] },
   beacon: { title: 'Relay beacon repair', subtitle: 'Tune both signal bands to reconnect the outpost.', Icon: Radio, steps: ['Use − and + to adjust Channel 1 and Channel 2.', 'Match each dial to its target frequency number.', 'Press Lock signal when both channels line up.'] },
 };
 
 function TutorialVisual({ task }) {
+  if (task === 'purifyWater') return <div className="tutorial-stage tutorial-water"><div className="tutorial-stage-caption">WATER LAB · MATCH POLLUTANT TO FILTER</div><div className="tutorial-flashes"><i>GRIT</i><i>OIL</i><i>SALT</i></div><div className="tutorial-zone-label">SAND · CARBON · MEMBRANE</div></div>;
+  if (task === 'chargePower') return <div className="tutorial-stage tutorial-solar"><div className="tutorial-stage-caption">SOLAR ARRAY · CONNECT THE CIRCUIT</div><div className="tutorial-flashes"><i>☀</i><i>↻</i><i>▣</i></div><div className="tutorial-zone-label">ROTATE COUPLERS TO REACH BATTERY</div></div>;
   if (task === 'ice') return <div className="tutorial-stage tutorial-ice"><div className="tutorial-stage-caption">THERMAL DRILL · WATCH THE NEEDLE</div><div className="tutorial-heat"><span/><i/></div><div className="tutorial-zone-label">← WAIT FOR THE GREEN SAFE ZONE →</div></div>;
   if (task === 'sample') return <div className="tutorial-stage tutorial-sample"><div className="tutorial-stage-caption">SCAN · REMEMBER · REPEAT</div><div className="tutorial-flashes"><i/><i/><i/><i/></div><div className="tutorial-rock">◆</div><div className="tutorial-zone-label">LIGHTS REVEAL THE ROCK CORE</div></div>;
   return <div className="tutorial-stage tutorial-beacon"><div className="tutorial-stage-caption">SIGNAL RELAY · MATCH BOTH CHANNELS</div>{[1, 2].map((channel) => <div className="tutorial-dial" key={channel}><span>CH {channel}</span><div><i/></div><b>{channel === 1 ? '45' : '60'} MHz</b></div>)}<div className="tutorial-zone-label">− / + TUNE &nbsp; · &nbsp; LOCK SIGNAL</div></div>;
@@ -36,6 +40,24 @@ function IceGame({ onComplete }) {
     <div className={`ice-readout ${inSafeZone ? 'ice-readout-ready' : ''}`}><span>DRILL TEMPERATURE</span><b>{Math.round(needle)}°</b><strong>{inSafeZone ? 'READY' : needle < 44 ? 'WARMING' : 'COOLING'}</strong></div>
     <div className={`heat-meter ${inSafeZone ? 'heat-ready' : ''}`}><div className="heat-cold"/><div className="heat-safe"/><div className="heat-hot"/><i style={{ left: `${needle}%` }}/></div><div className="heat-labels"><span>COLD</span><b>SAFE ZONE</b><span>HOT</span></div>
     <p className={`mini-feedback ${inSafeZone ? 'mini-feedback-ready' : ''}`} aria-live="polite">{message}</p><button className={`mini-primary ${inSafeZone ? 'ice-collect-ready' : ''}`} onClick={collect}><Snowflake size={16}/> {inSafeZone ? 'Collect ice core now' : 'Collect ice core'}</button></div>;
+}
+
+function WaterFilterGame({ onComplete }) {
+  const samples = [{ dirt: 'Grit', answer: 'sand' }, { dirt: 'Oil traces', answer: 'carbon' }, { dirt: 'Dissolved salts', answer: 'membrane' }];
+  const [round, setRound] = useState(0); const [message, setMessage] = useState('Select the filter that removes this contaminant.');
+  const choose = (filter) => { if (filter !== samples[round].answer) { setMessage('That filter will not remove this contaminant. Try another.'); return; } if (round === samples.length - 1) onComplete(); else { setRound(round + 1); setMessage('Good filter choice. Inspect the next water sample.'); } };
+  return <div className="mini-game-content"><div className="mini-game-instruction"><Droplets size={17}/><span>Sample {round + 1}/3 · Contaminant: <b>{samples[round].dirt}</b></span></div><div className="filter-choices">{[['sand','Sand bed','Catches grit'],['carbon','Activated carbon','Traps oils'],['membrane','Fine membrane','Removes dissolved salts']].map(([id,name,desc])=><button key={id} onClick={()=>choose(id)}><Droplets size={18}/><b>{name}</b><small>{desc}</small></button>)}</div><p className="mini-feedback" aria-live="polite">{message}</p></div>;
+}
+
+function SolarCircuitGame({ onComplete }) {
+  const [rotations, setRotations] = useState([1, 1, 1]);
+  const aligned = rotations.filter((value) => value % 2 === 0).length;
+  const rotate = (index) => {
+    const next = rotations.map((value, i) => i === index ? (value + 1) % 4 : value);
+    setRotations(next);
+    if (next.every((value) => value % 2 === 0)) onComplete();
+  };
+  return <div className="mini-game-content"><div className="mini-game-instruction"><Sun size={17}/><span>Turn each coupler to make its line horizontal and link the solar array to the battery.</span></div><div className="solar-circuit"><span className="solar-source">☀ SOLAR</span>{rotations.map((value, i) => <button key={i} onClick={() => rotate(i)} aria-label={`Coupler ${i + 1}: ${value % 2 ? 'vertical' : 'horizontal'}. Click to rotate`}><i className={value % 2 ? 'pipe-vertical' : 'pipe-horizontal'}/><small>{i + 1}</small></button>)}<span className="battery-target">▣ BATTERY</span></div><div className="solar-target"><span>REQUIRED PATH</span><b>← ━ ━ ━ →</b></div><p className="mini-feedback" aria-live="polite">{aligned}/3 couplers connected horizontally. Click a tile to rotate it.</p></div>;
 }
 
 function SampleGame({ onComplete }) {
@@ -86,13 +108,14 @@ export default function MissionMinigame({ task, onComplete, onClose }) {
   const [started, setStarted] = useState(false);
   if (!task) return null;
   const detail = DETAILS[task];
+  const baseTask = task === 'purifyWater' || task === 'chargePower';
   const Icon = detail.Icon;
-  const Game = task === 'ice' ? IceGame : task === 'sample' ? SampleGame : BeaconGame;
+  const Game = task === 'ice' ? IceGame : task === 'sample' ? SampleGame : task === 'beacon' ? BeaconGame : task === 'purifyWater' ? WaterFilterGame : SolarCircuitGame;
   return <div className="minigame-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <section className="minigame-dialog" role="dialog" aria-modal="true" aria-labelledby="minigame-title"><button className="minigame-close" onClick={onClose} aria-label="Leave task"><X size={18}/></button>
-      <div className={`minigame-emblem ${task}`}><Icon size={22}/></div><p className="eyebrow">FIELD TASK · LUNABASE-01</p><h2 id="minigame-title">{detail.title}</h2><p className="minigame-subtitle">{detail.subtitle}</p><div className="task-stamina-cost"><Footprints size={14}/> −25 stamina when this task is completed <b>·</b> <strong>MAX 100</strong></div>
-      {started ? <Game onComplete={onComplete}/> : <div className="task-tutorial"><TutorialVisual task={task}/><div className="tutorial-copy"><h3>How to complete this task</h3><ol>{detail.steps.map((step) => <li key={step}>{step}</li>)}</ol></div><button className="mini-primary tutorial-start" onClick={() => setStarted(true)}>Start mini-game <ChevronRight size={17}/></button></div>}
-      <button className="mini-back" onClick={onClose}><RotateCcw size={13}/> Return to surface</button>
+      <div className={`minigame-emblem ${task}`}><Icon size={22}/></div><p className="eyebrow">{baseTask ? 'HABITAT SYSTEM · LUNABASE-01' : 'FIELD TASK · LUNABASE-01'}</p><h2 id="minigame-title">{detail.title}</h2><p className="minigame-subtitle">{detail.subtitle}</p>{!baseTask && <div className="task-stamina-cost"><Footprints size={14}/> −25 stamina when this task is completed <b>·</b> <strong>MAX 100</strong></div>}
+      {started ? <Game task={task} onComplete={onComplete}/> : <div className="task-tutorial"><TutorialVisual task={task}/><div className="tutorial-copy"><h3>How to complete this task</h3><ol>{detail.steps.map((step) => <li key={step}>{step}</li>)}</ol></div><button className="mini-primary tutorial-start" onClick={() => setStarted(true)}>Start mini-game <ChevronRight size={17}/></button></div>}
+      <button className="mini-back" onClick={onClose}><RotateCcw size={13}/> {baseTask ? 'Return to habitat' : 'Return to surface'}</button>
     </section>
   </div>;
 }

@@ -18,6 +18,8 @@ For a production build, run `npm run build`; to view it locally, run `npm run pr
 
 The opening briefing introduces water, oxygen, air filtration, power, and food. Select **Start exploring** to enter the game screen. Move the astronaut with **WASD** or the **arrow keys**. Walk near a glowing marker and press **E** to see its animated tutorial; start the mini-game when you're ready. On touch screens, use the on-screen direction pad and investigate button. Extract an ice core by timing the heater, repeat the scanner pattern to collect a rock sample, and tune both signal channels to repair the relay. Each task is checked off only after its mini-game is completed. Discoveries improve water, power, oxygen-system prospects, or crew morale.
 
+Select **Enter base** to open the habitat interior. The oxygen generator converts water and power into stored base oxygen; use the suit dock to transfer base oxygen into the EVA suit. The air scrubber improves clean-air quality. Eat a ration to restore satiety. Moving outside and completing field work consumes suit oxygen, so return to the base to recharge before it runs out.
+
 Use **Advance one sol** to progress the survival simulation. Supplies decrease and crew condition shifts each day; **Repack food supplies** restores some food at a morale cost. The crew starts with 100 stamina; completing each field task uses 25. Keep critical resources above zero and reach Sol 30.
 
 All displayed rates and quantities are illustrative balancing values for this game. They are not NASA facts, mission specifications, or engineering guidance.
