@@ -9,6 +9,7 @@ export const INITIAL_GAME = {
   systems: { water: 72, air: 84, oxygen: 62, wear: 18, comms: 0 },
   exploration: { ice: false, sample: false, beacon: false, powerRepair: false },
   sampleCount: 0,
+  lastSampleDay: 0,
   lastIceDay: 0,
   lastBeaconDay: 0,
   lastPowerRepairDay: 0,

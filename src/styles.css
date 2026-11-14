@@ -161,3 +161,43 @@
 @media(max-width:560px){.repair-board{height:158px;min-height:158px;padding:0}.repair-coupler{width:48px;height:48px}.repair-coupler:nth-of-type(1){left:29%;top:38.9%}.repair-coupler:nth-of-type(2){left:66%;top:38.9%}.repair-coupler:nth-of-type(3){left:29%;top:72.2%}.repair-coupler:nth-of-type(4){left:66%;top:72.2%}.repair-source,.repair-battery{font-size:7px}.repair-source{left:1%}.repair-battery{right:1%}.repair-target-hint b{font-size:9px}}
 .satiety-resource{position:relative;overflow:hidden}.resource-strip .satiety-resource svg{color:#e8ba67}.resource-strip .satiety-resource>i{position:absolute;left:0;right:0;bottom:0;height:3px;background:#38343a}.resource-strip .satiety-resource>i>span{display:block;height:100%;background:linear-gradient(90deg,#df865e,#f3cf79);transition:width .25s}.resource-strip .satiety-resource b{color:#f3d28a}
 .hq-contact-card{padding:13px;border:1px solid #303540;border-radius:8px;background:linear-gradient(150deg,#1b2029,#171b23)}.hq-contact-heading{display:flex;align-items:center;gap:9px}.hq-contact-heading>span{display:grid;place-items:center;width:31px;height:31px;border-radius:8px;background:#24323a;color:#87cce9}.hq-contact-heading>div{flex:1}.hq-contact-heading small{color:#8993a0;font:8px var(--mono);letter-spacing:.8px}.hq-contact-heading h2{margin:3px 0 0;font:600 14px var(--display)}.hq-contact-heading>b{color:#eea19e;font:8px var(--mono)}.hq-contact-heading>b.hq-online{color:#83d6b5}.hq-contact-card>p{margin:10px 0;color:#abb4bf;font-size:11px;line-height:1.5}.hq-contact-card>button{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:9px;border:1px solid #416253;border-radius:6px;background:#20352e;color:#b8ebd4;cursor:pointer;font-size:11px}.hq-contact-card>button:disabled{opacity:.45;cursor:not-allowed}.hq-contact-card>button small{margin-left:auto;font:8px var(--mono)}.hq-unlock-note{display:block;margin-top:8px;color:#9299a4;font-size:9px}
+
+/* Kid-friendly readability and touch targets */
+:root{--mint:#8fe6c3;--amber:#ffd06f;--rose:#ff9295;--blue:#85d4ff;--violet:#c0aaff;--green:#a8e99e}
+body{font-size:15px;color:#f5f4ef}
+button{min-height:40px;border-radius:10px;transition:transform .16s ease,filter .16s ease,box-shadow .16s ease}
+button:not(:disabled):hover{filter:brightness(1.13);transform:translateY(-1px)}
+button:focus-visible{outline:3px solid #ffe18b;outline-offset:3px}
+.game-info-card,.task-card,.hq-contact-card,.panel{border-radius:14px;box-shadow:0 8px 22px #05070b35}
+.game-sidebar{gap:13px}
+.game-info-card,.task-card,.hq-contact-card{padding:17px}
+.game-card-heading h2,.task-heading h2,.hq-contact-heading h2{font-size:19px}
+.game-card-heading small,.task-heading small,.hq-contact-heading small{font-size:10px;letter-spacing:1px}
+.eclss-lead,.eclss-row small,.task-item small,.hq-contact-card>p,.hq-unlock-note{font-size:12px;line-height:1.5}
+.eclss-row{padding:9px 0}
+.eclss-row b,.task-item b{font-size:13px}
+.task-item{gap:11px;padding:12px 0}
+.task-check{width:28px;height:28px;font-size:11px}
+.relay-status{font-size:11px;line-height:1.45;padding:10px;border-radius:9px}
+.resource-strip{gap:6px}
+.resource-strip>div{min-width:78px;padding:9px 10px;border-radius:9px}
+.resource-strip span{font-size:9px;letter-spacing:.3px}
+.resource-strip b{font-size:12px}
+.game-day{font-size:11px}
+.ration-button,.hq-contact-card>button{min-height:46px;font-size:12px;border-radius:10px}
+.ration-button span{font-size:10px}
+.game-message{font-size:13px;line-height:1.5}
+.world-controls{font-size:10px}
+.base-entry-button,.interact-button,.return-surface-button,.base-toggle,.game-restart{min-height:42px;border-radius:10px}
+@media(max-width:900px){.game-info-card,.task-card,.hq-contact-card,.panel{border-radius:13px}}
+@media(max-width:640px){
+ .resource-strip{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+ .resource-strip>div{padding:8px 4px;min-height:38px}
+ .resource-strip span{font-size:8px}
+ .resource-strip b{font-size:10px}
+ .game-sidebar{gap:10px}
+ .game-info-card,.task-card,.hq-contact-card{padding:14px}
+ .eclss-row small,.task-item small,.hq-contact-card>p{font-size:12px}
+ .task-item b{font-size:14px}
+ .ration-button{min-height:46px}
+}
