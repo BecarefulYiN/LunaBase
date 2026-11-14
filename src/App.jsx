@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowDownRight, ArrowUpRight, BatteryCharging, Check, ChevronRight, CircleHelp, Clock3, Compass, Droplets, Footprints, Gauge, HeartPulse, Leaf, Menu, Moon, Orbit, Package, Play, Radio, RotateCcw, Shield, Sparkles, Wind, Wrench, X } from './Icons.jsx';
 import { INITIAL_GAME, manageBase, takeAction } from './game.js';
 import Moonwalk from './Moonwalk.jsx';
@@ -92,10 +92,19 @@ function BriefingPictureSteps() {
 
 export default function App() {
   const [game, setGame] = useState(INITIAL_GAME);
+  const lastDay = useRef(INITIAL_GAME.day);
+  const [dayNotice, setDayNotice] = useState(null);
+  const [guideSeen, setGuideSeen] = useState({});
   const [briefingOpen, setBriefingOpen] = useState(true);
   const [activeTask, setActiveTask] = useState(null);
   const [activeBaseTask, setActiveBaseTask] = useState(null);
   const [baseMode, setBaseMode] = useState(false);
+  useEffect(() => {
+    if (game.day !== lastDay.current) {
+      lastDay.current = game.day;
+      setDayNotice(game.day);
+    }
+  }, [game.day]);
   useEffect(() => {
     if (game.suitOxygen <= 0 && !baseMode && !briefingOpen && !game.ended) {
       setActiveTask(null);
@@ -113,18 +122,29 @@ export default function App() {
     window.addEventListener('keydown', handleBaseKey);
     return () => window.removeEventListener('keydown', handleBaseKey);
   }, [activeTask, baseMode, briefingOpen, game.ended, game.suitOxygen]);
-  const restart = () => { setGame(structuredClone(INITIAL_GAME)); setBriefingOpen(true); };
+  useEffect(() => {
+    if (!dayNotice) return undefined;
+    const timer = window.setTimeout(() => setDayNotice(null), 3600);
+    return () => window.clearTimeout(timer);
+  }, [dayNotice]);
+  const markGuideSeen = useCallback((key) => {
+    setGuideSeen((current) => current[key] === game.day ? current : { ...current, [key]: game.day });
+  }, [game.day]);
+  const canShowGuide = (key) => guideSeen[key] === undefined || guideSeen[key] === game.day;
+  const restart = () => { lastDay.current = INITIAL_GAME.day; setGame(structuredClone(INITIAL_GAME)); setBriefingOpen(true); setDayNotice(null); setGuideSeen({}); };
   const advanceDay = () => setGame((current) => takeAction(current, 'advance'));
   const rationFood = () => setGame((current) => takeAction(current, 'ration'));
   const baseAction = (action) => setGame((current) => manageBase(current, action));
   const completeBaseTask = () => { if (activeBaseTask) baseAction(activeBaseTask); setActiveBaseTask(null); };
-  const inspectSite = (site) => { if (!game.exploration[site] && game.suitOxygen >= 12) setActiveTask(site); };
+  const inspectSite = (site) => { if (!game.dailyFieldDone?.[site] && game.suitOxygen >= 12) setActiveTask(site); };
   const completeSite = (site) => {
     if (game.suitOxygen < 12) return;
     setGame((current) => {
-    if (current.exploration[site] || current.stamina <= 0) return current;
+    if (current.dailyFieldDone?.[site] || current.stamina <= 0) return current;
     const next = structuredClone(current);
+    const firstDiscovery = !current.exploration[site];
     next.exploration[site] = true;
+    next.dailyFieldDone = { ...(current.dailyFieldDone || {}), [site]: true };
     next.suitOxygen = Math.max(0, current.suitOxygen - 12);
     next.stamina = Math.max(0, current.stamina - 1);
     const rewards = {
@@ -133,9 +153,11 @@ export default function App() {
       beacon: { title: 'Lunar relay restored', detail: 'The outpost is linked to the lunar relay network. Earth contact and navigation support are back online.', apply: () => { next.resources.power = Math.min(100, next.resources.power + 10); next.systems.comms = 100; next.crew.forEach((person) => { person.morale = Math.min(100, person.morale + 8); }); } },
     };
     const reward = rewards[site];
-    reward.apply();
-    next.log = [{ day: next.day, title: reward.title, detail: reward.detail, tone: 'good' }, ...next.log].slice(0, 5);
-    return next;
+    if (firstDiscovery) reward.apply();
+    const title = firstDiscovery ? reward.title : `${reward.title} · daily repeat`;
+    const detail = firstDiscovery ? reward.detail : 'Daily objective complete. The first-discovery reward was already collected.';
+    next.log = [{ day: next.day, title, detail, tone: 'good' }, ...next.log].slice(0, 5);
+    return next.stamina <= 0 ? takeAction(next, 'advance') : next;
     });
     setActiveTask(null);
   };
@@ -155,15 +177,22 @@ export default function App() {
   const dailyServiceTask = serviceSchedule[(game.day - 1) % serviceSchedule.length];
   const dailyServiceTaskDone = game.log.some((entry) => entry.day === game.day && entry.title === dailyServiceTask.logTitle);
   const dailyTasks = [
-    { id: 'field', title: dailyFieldTask.title, note: dailyFieldTask.note, done: Boolean(game.exploration[dailyFieldTask.id]) },
+    { id: 'field', title: dailyFieldTask.title, note: dailyFieldTask.note, done: Boolean(game.dailyFieldDone?.[dailyFieldTask.id]) },
     { id: 'service', title: dailyServiceTask.title, note: dailyServiceTask.note, done: dailyServiceTaskDone },
     { id: 'readiness', title: 'Check crew & suit readiness', note: game.satiety < 50 ? `Satiety ${game.satiety}% — eat at the galley to reach 50%.` : game.suitOxygen < 30 ? `Suit oxygen ${Math.round(game.suitOxygen)}% — refill at the dock before going outside.` : `Satiety ${game.satiety}% · Suit oxygen ${Math.round(game.suitOxygen)}% — both are ready.`, done: game.satiety >= 50 && game.suitOxygen >= 30 },
   ];
+  const fieldGuideKey = `field-${dailyFieldTask.id}`;
+  const baseEntryGuideKey = `base-entry-${dailyServiceTask.station}`;
+  const stationGuideKey = `station-${game.suitOxygen <= 0 ? 'suit' : dailyServiceTask.station}`;
+  const showFieldGuide = !dailyTasks[0].done && canShowGuide(fieldGuideKey);
+  const showBaseEntryGuide = dailyTasks[0].done && !dailyServiceTaskDone && canShowGuide(baseEntryGuideKey);
+  const showStationGuide = canShowGuide(stationGuideKey);
   const completedDailyTasks = dailyTasks.filter((task) => task.done).length;
   return <div className="game-shell">
-    <header className="game-topbar"><a className="brand" href="#top" aria-label="LunaBase home"><span className="brand-mark"><Moon size={20}/><span/></span><span className="brand-word">luna<span>base</span><small>MOON EXPEDITION</small></span></a><div className="game-day"><span className="live-dot"/> SOL {String(game.day).padStart(2, '0')} <i>/</i> 14</div><div className="resource-strip"><div title="Stored in the habitat oxygen tank"><Orbit size={15}/><span>BASE O₂</span><b>{Math.round(game.resources.oxygen)}</b></div><div title="Oxygen left in the spacesuit"><Footprints size={15}/><span>SUIT O₂</span><b>{Math.round(game.suitOxygen)}</b></div><div><Droplets size={15}/><span>H₂O</span><b>{Math.round(game.resources.water)}</b></div><div><Wind size={15}/><span>AIR</span><b>{Math.round(game.systems.air)}</b></div><div><Leaf size={15}/><span>FOOD</span><b>{Math.round(game.resources.food)}</b></div><div><BatteryCharging size={15}/><span>POWER</span><b>{Math.round(game.resources.power)}</b></div><div className="stamina-resource" title="Crew stamina out of 100"><HeartPulse size={15}/><span>STA</span><b>{game.stamina}</b><i><span style={{ width: `${game.stamina}%` }}/></i></div></div><button className="base-toggle" disabled={baseMode && game.suitOxygen <= 0} onClick={() => { setBaseMode((current) => !current); setActiveTask(null); }}><Orbit size={14}/>{baseMode ? 'Return to surface' : 'Enter base'}</button><button className="game-restart" onClick={restart}><RotateCcw size={14}/> Restart</button></header>
+    <header className="game-topbar"><a className="brand" href="#top" aria-label="LunaBase home"><span className="brand-mark"><Moon size={20}/><span/></span><span className="brand-word">luna<span>base</span><small>MOON EXPEDITION</small></span></a><div className="game-day"><span className="live-dot"/> SOL {String(game.day).padStart(2, '0')} <i>/</i> 14</div><div className="resource-strip"><div title="Stored in the habitat oxygen tank"><Orbit size={15}/><span>BASE O₂</span><b>{Math.round(game.resources.oxygen)}</b></div><div title="Oxygen left in the spacesuit"><Footprints size={15}/><span>SUIT O₂</span><b>{Math.round(game.suitOxygen)}</b></div><div><Droplets size={15}/><span>H₂O</span><b>{Math.round(game.resources.water)}</b></div><div><Wind size={15}/><span>AIR</span><b>{Math.round(game.systems.air)}</b></div><div><Leaf size={15}/><span>FOOD</span><b>{Math.round(game.resources.food)}</b></div><div><BatteryCharging size={15}/><span>POWER</span><b>{Math.round(game.resources.power)}</b></div><div className="stamina-resource" title="Crew stamina out of 5"><HeartPulse size={15}/><span>STA</span><b>{game.stamina}</b><i><span style={{ width: `${game.stamina * 20}%` }}/></i></div></div><button className="base-toggle" disabled={baseMode && game.suitOxygen <= 0} onClick={() => { setBaseMode((current) => !current); setActiveTask(null); }}><Orbit size={14}/>{baseMode ? 'Return to surface' : 'Enter base'}</button><button className="game-restart" onClick={restart}><RotateCcw size={14}/> Restart</button></header>
+    {dayNotice!==null&&<div className="day-change-notice" role="status" aria-live="polite"><span className="day-change-icon"><Orbit size={22}/></span><div><small>NEW LUNAR DAY</small><b>SOL {String(dayNotice).padStart(2,'0')} HAS STARTED</b><p>Today’s task list has been updated.</p></div><button onClick={()=>setDayNotice(null)} aria-label="Dismiss day update"><X size={17}/></button></div>}
     <main className="game-layout" id="top">
-      {baseMode ? <HabitatInterior game={game} onAction={baseAction} onMiniGame={setActiveBaseTask} onAdvance={advanceDay} onLeave={() => setBaseMode(false)} lockedOutside={game.suitOxygen <= 0} guideStation={dailyServiceTaskDone ? null : dailyServiceTask.station} guideTaskTitle={dailyServiceTask.title}/> : <><aside className="game-eclss-sidebar">
+      {baseMode ? <HabitatInterior game={game} onAction={baseAction} onMiniGame={setActiveBaseTask} onAdvance={advanceDay} onLeave={() => setBaseMode(false)} lockedOutside={game.suitOxygen <= 0} guideStation={game.suitOxygen <= 0 ? (showStationGuide ? 'suit' : null) : (!dailyServiceTaskDone && showStationGuide ? dailyServiceTask.station : null)} guideTaskTitle={game.suitOxygen <= 0 ? 'Refill suit oxygen' : dailyServiceTask.title} onGuideSeen={markGuideSeen} dailyTasks={dailyTasks} dailyProgress={completedDailyTasks}/> : <><aside className="game-eclss-sidebar">
         <section className="game-info-card"><div className="game-card-heading"><span className="info-sigil"><Wind size={17}/></span><div><small>HABITAT LIFE SUPPORT</small><h2>ECLSS info</h2></div></div><p className="eclss-lead">ECLSS keeps the crew alive by recycling and managing the habitat’s essential resources.</p>
           <div className="eclss-row"><span className="eclss-icon water"><Droplets size={15}/></span><div><b>Water</b><small>Recover used water; lunar ice can replenish reserves.</small></div></div>
           <div className="eclss-row"><span className="eclss-icon oxygen"><Orbit size={15}/></span><div><b>Oxygen</b><small>Generate breathable oxygen from processed water.</small></div></div>
@@ -171,9 +200,9 @@ export default function App() {
           <div className="eclss-row"><span className="eclss-icon power"><BatteryCharging size={15}/></span><div><b>Power</b><small>Run recovery, filtration, lights and equipment.</small></div></div>
           <div className="eclss-row"><span className="eclss-icon food"><Leaf size={15}/></span><div><b>Food</b><small>Keep the crew supplied throughout the mission.</small></div></div>
         </section>
-      </aside><section className="game-view"><Moonwalk day={game.day} foundSites={game.exploration} suitOxygen={game.suitOxygen} guideBase={dailyTasks[0].done && !dailyServiceTaskDone} guideTaskTitle={dailyServiceTask.title} guideSiteId={dailyTasks[0].done ? null : dailyFieldTask.id} onStep={() => setGame((current) => ({ ...current, suitOxygen: Math.max(0, current.suitOxygen - 1) }))} onInteract={inspectSite} onEnterBase={() => setBaseMode(true)} disabled={Boolean(activeTask || briefingOpen)}/><div className="game-message"><span className="live-dot"/><span>{game.log[0]?.title}</span><i>{game.log[0]?.detail}</i></div></section>
+      </aside><section className="game-view"><Moonwalk day={game.day} foundSites={game.exploration} dailyDone={game.dailyFieldDone || {}} suitOxygen={game.suitOxygen} guideBase={showBaseEntryGuide} guideBaseKey={baseEntryGuideKey} guideTaskTitle={dailyServiceTask.title} guideSiteId={showFieldGuide ? dailyFieldTask.id : null} onGuideSeen={markGuideSeen} onStep={() => setGame((current) => ({ ...current, suitOxygen: Math.max(0, current.suitOxygen - 1) }))} onInteract={inspectSite} onEnterBase={() => setBaseMode(true)} disabled={Boolean(activeTask || briefingOpen)}/><div className="game-message"><span className="live-dot"/><span>{game.log[0]?.title}</span><i>{game.log[0]?.detail}</i></div></section>
       <aside className="game-sidebar">
-        <section className="task-card"><div className="task-heading"><div><small>SOL {String(game.day).padStart(2, '0')} · TODAY</small><h2>Daily task list</h2></div><span>{completedDailyTasks}/{dailyTasks.length}</span></div><div className={`relay-status ${game.systems.comms ? 'relay-online' : ''}`}><Radio size={14}/><span>{game.systems.comms ? 'EARTH LINK ONLINE · navigation and mission support available' : 'EARTH LINK OFFLINE · restore the relay by Sol 14'}</span></div><div className="task-progress"><span style={{ width: `${completedDailyTasks / dailyTasks.length * 100}%` }}/></div>{dailyTasks.map((task, index) => <div className={`task-item ${task.done ? 'task-complete' : ''}`} key={task.id}><span className="task-check">{task.done ? '✓' : String(index + 1).padStart(2, '0')}</span><div><b>{task.title}</b><small>{task.note}</small></div></div>)}<p className="stamina-note"><Footprints size={13}/> Field objectives use 1 stamina. Tasks refresh each sol.</p>
+        <section className="task-card"><div className="task-heading"><div><small>SOL {String(game.day).padStart(2, '0')} · TODAY</small><h2>Daily task list</h2></div><span>{completedDailyTasks}/{dailyTasks.length}</span></div><div className={`relay-status ${game.systems.comms ? 'relay-online' : ''}`}><Radio size={14}/><span>{game.systems.comms ? 'EARTH LINK ONLINE · navigation and mission support available' : 'EARTH LINK OFFLINE · restore the relay by Sol 14'}</span></div><div className="task-progress"><span style={{ width: `${completedDailyTasks / dailyTasks.length * 100}%` }}/></div>{dailyTasks.map((task, index) => <div className={`task-item ${task.done ? 'task-complete' : ''}`} key={task.id}><span className="task-check">{task.done ? '✓' : String(index + 1).padStart(2, '0')}</span><div><b>{task.title}</b><small>{task.note}</small></div></div>)}<p className="stamina-note"><Footprints size={13}/> Field and base tasks cost 1 stamina. At 0, the next Sol begins; field tasks reopen, but discovery rewards are one-time.</p>
           <button className="sol-button" onClick={advanceDay} disabled={game.ended}><Play size={14} fill="currentColor"/> Advance one sol</button><button className="ration-button" onClick={rationFood} disabled={game.ended}><Package size={14}/> Repack food supplies <span>+8 FOOD</span></button>
         </section>
         <div className="crew-status-bar"><HeartPulse size={15}/><span>Crew condition</span><b>{Math.round(game.crew.reduce((sum, person) => sum + person.health, 0) / game.crew.length)}%</b><i/><Sparkles size={14}/><b>{Math.round(game.crew.reduce((sum, person) => sum + person.morale, 0) / game.crew.length)}%</b><i/><Leaf size={14}/><b>{game.satiety}%</b></div>

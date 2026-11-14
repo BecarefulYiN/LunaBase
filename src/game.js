@@ -7,6 +7,7 @@ export const INITIAL_GAME = {
   resources: { oxygen: 82, food: 76, power: 68, water: 54, wastewater: 12 },
   systems: { water: 72, air: 84, oxygen: 62, wear: 18, comms: 0 },
   exploration: { ice: false, sample: false, beacon: false },
+  dailyFieldDone: {},
   crew: [
     { name: 'Maya Chen', role: 'Commander', health: 92, morale: 82, color: 'coral' },
     { name: 'Leo Park', role: 'Systems engineer', health: 86, morale: 74, color: 'blue' },
@@ -63,6 +64,8 @@ export function takeAction(game, action) {
     tone = 'neutral';
   } else if (action === 'advance') {
     next.day += 1;
+    next.stamina = 5;
+    next.dailyFieldDone = {};
     r.oxygen = clamp(r.oxygen - 7 + Math.round(next.systems.oxygen * 0.08));
     r.food = clamp(r.food - 5);
     r.power = clamp(r.power - (next.systems.comms ? 4 : 5) + (next.systems.wear < 75 ? 2 : 0));
@@ -98,7 +101,7 @@ export function takeAction(game, action) {
 }
 
 export function manageBase(game, action) {
-  if (game.ended) return game;
+  if (game.ended || game.stamina <= 0) return game;
   const next = structuredClone(game);
   const stock = next.resources;
   let title = '';
@@ -147,6 +150,7 @@ export function manageBase(game, action) {
     return game;
   }
 
+  next.stamina = Math.max(0, next.stamina - 1);
   next.log = appendLog(next, title, detail, tone);
-  return next;
+  return next.stamina <= 0 ? takeAction(next, 'advance') : next;
 }

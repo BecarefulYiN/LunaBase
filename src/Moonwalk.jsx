@@ -14,7 +14,8 @@ const DIRECTIONS = {
   ArrowRight: [4, 0, 'right'], d: [4, 0, 'right'], D: [4, 0, 'right'],
 };
 
-export default function Moonwalk({ day, foundSites, onInteract, onEnterBase, suitOxygen = 100, onStep, disabled = false, guideBase = false, guideTaskTitle = '', guideSiteId = null }) {
+export default function Moonwalk({ day, foundSites, dailyDone = null, onInteract, onEnterBase, suitOxygen = 100, onStep, disabled = false, guideBase = false, guideBaseKey = '', guideTaskTitle = '', guideSiteId, onGuideSeen }) {
+  const completedToday = dailyDone || {};
   const [walker, setWalker] = useState({ x: 19, y: 59, facing: 'right', step: 0 });
   const walkerRef = useRef(walker);
   const move = (direction) => {
@@ -29,7 +30,7 @@ export default function Moonwalk({ day, foundSites, onInteract, onEnterBase, sui
   };
   const nearestSite = () => SITES
     .map((site) => ({ ...site, distance: Math.hypot(site.x - walkerRef.current.x, site.y - walkerRef.current.y) }))
-    .filter((site) => !foundSites[site.id] && site.distance < 14)
+    .filter((site) => !completedToday[site.id] && site.distance < 14)
     .sort((a, b) => a.distance - b.distance)[0];
   const nearBase = Math.hypot(walker.x - 15, walker.y - 35) < 20;
   const interact = () => {
@@ -61,15 +62,20 @@ export default function Moonwalk({ day, foundSites, onInteract, onEnterBase, sui
   const near = nearestSite();
   const foundCount = Object.values(foundSites).filter(Boolean).length;
   const firstDaysTargets = ['beacon', 'sample', 'ice'];
-  const guideTaskId = guideSiteId || (day >= 1 && day <= firstDaysTargets.length ? firstDaysTargets[day - 1] : null);
-  const guideSite = guideTaskId && !foundSites[guideTaskId] ? SITES.find((site) => site.id === guideTaskId) : null;
+  const guideTaskId = guideSiteId === undefined ? (day >= 1 && day <= firstDaysTargets.length ? firstDaysTargets[day - 1] : null) : guideSiteId;
+  const guideSite = guideTaskId && !completedToday[guideTaskId] ? SITES.find((site) => site.id === guideTaskId) : null;
   const guideHome = guideBase && !guideSite ? { x: 15, y: 35 } : null;
   const guideTarget = guideSite || guideHome;
   const guideArrived = Boolean(guideSite ? near?.id === guideSite.id : guideHome && nearBase);
+  useEffect(() => {
+    if (disabled || !onGuideSeen) return;
+    if (guideSite) onGuideSeen(`field-${guideSite.id}`);
+    else if (guideHome && guideBaseKey) onGuideSeen(guideBaseKey);
+  }, [disabled, guideSite?.id, Boolean(guideHome), guideBaseKey, onGuideSeen]);
   return <section className="moonwalk panel" aria-label="Lunar surface exploration game">
     <div className="moonwalk-header">
       <div><p className="eyebrow">SURFACE EXPLORATION · SOL {String(day).padStart(2, '0')}</p><h2>Moonwalk</h2><p className="moonwalk-subtitle">Step out of the habitat and explore the lunar terrain.</p></div>
-      <div className="field-progress"><span className="field-progress-icon"><Compass size={16}/></span><span><b>{foundCount} / 3</b><small>FIELD OBJECTIVES</small></span></div>
+      <div className="field-progress"><span className="field-progress-icon"><Compass size={16}/></span><span><b>{foundCount} / 3</b><small>FIELD RECORDS</small></span></div>
     </div>
     {suitOxygen <= 20 && <div className={`suit-oxygen-alert ${suitOxygen <= 8 ? 'oxygen-critical' : ''}`} role="status"><Footprints size={17}/><span><b>{suitOxygen <= 8 ? 'Suit oxygen critical' : 'Suit oxygen low'}</b><small>{suitOxygen <= 8 ? 'Return now. At 0%, you will be moved back to the habitat.' : 'Head back to the habitat soon to refill before exploring further.'}</small></span><button onClick={onEnterBase} disabled={disabled}>R · Return to base</button></div>}
     <div className="moon-world" onClick={() => document.activeElement?.blur()}>
@@ -81,8 +87,8 @@ export default function Moonwalk({ day, foundSites, onInteract, onEnterBase, sui
       <div className="world-solar-field" role="img" aria-label="Solar panel array powering the lunar habitat"><div className="world-solar-panel"><i/><i/><i/><i/><i/><i/><i/><i/></div><span className="solar-support"/><span className="solar-field-label">SOLAR ARRAY</span><span className="solar-glint"/></div>
       <div className="world-rover"><span/><i/><b/></div>
       <div className="world-flag"><span/><i/></div>
-      {SITES.map((site) => { const Icon = site.icon; const done = foundSites[site.id]; const isNear = near?.id === site.id; const isGuideTarget=guideSite?.id===site.id; return <div className={`world-site ${site.tone} ${done ? 'site-done' : ''} ${isNear ? 'site-near' : ''} ${isGuideTarget?'site-guide-target':''}`} key={site.id} style={{ left: `${site.x}%`, top: `${site.y}%` }}>
-        <span className="site-pin"><Icon size={16}/>{done && <b>✓</b>}</span><span className="site-label">{done ? 'COMPLETE' : site.name.toUpperCase()}</span>{isNear && <span className="site-prompt">E</span>}
+      {SITES.map((site) => { const Icon = site.icon; const done = Boolean(completedToday[site.id]); const recorded = Boolean(foundSites[site.id]); const isNear = near?.id === site.id; const isGuideTarget=guideSite?.id===site.id; return <div className={`world-site ${site.tone} ${done ? 'site-done' : ''} ${isNear ? 'site-near' : ''} ${isGuideTarget?'site-guide-target':''}`} key={site.id} style={{ left: `${site.x}%`, top: `${site.y}%` }}>
+        <span className="site-pin"><Icon size={16}/>{done && <b>✓</b>}</span><span className="site-label">{done ? 'DONE TODAY' : recorded ? `REPEAT · ${site.name.toUpperCase()}` : site.name.toUpperCase()}</span>{isNear && <span className="site-prompt">E</span>}
       </div>; })}
       <div className={`astronaut facing-${walker.facing}`} style={{ left: `${walker.x}%`, top: `${walker.y}%` }} aria-label="Your astronaut">
         <span className={`astronaut-body ${walker.step % 2 ? 'step-a' : 'step-b'}`}><i className="astronaut-pack"/><i className="astronaut-helmet"><b/></i><i className="astronaut-suit"/><i className="astronaut-arm arm-left"/><i className="astronaut-arm arm-right"/><i className="astronaut-leg leg-left"/><i className="astronaut-leg leg-right"/></span>
