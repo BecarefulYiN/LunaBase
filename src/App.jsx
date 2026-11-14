@@ -89,6 +89,26 @@ function MissionResult({ outcome, game, onRestart }) {
   return <div className="result-backdrop"><div className="result-modal"><div className={`result-icon ${success ? 'result-success' : 'result-failure'}`}>{success ? <Check size={26}/> : <X size={26}/>}</div><p className="eyebrow">LUNABASE · MISSION DEBRIEF</p><h2>{success ? 'Mission accomplished' : 'Mission ended'}</h2><p>{success ? 'The crew completed all 30 days on the lunar surface. A thoughtful balance of supplies, systems, and crew care brought everyone home.' : missingRelay ? 'The Earth relay was never restored. Without a communications and navigation link, mission control could not verify a safe return, so the expedition could not be certified as complete.' : 'A critical supply or crew health reached zero. Review the timeline, choose a different strategy, and launch again.'}</p><button className="launch-button" onClick={onRestart}><RotateCcw size={16}/> Start a new mission</button></div></div>;
 }
 
+function DayOneConversation({ onStart }) {
+  const [line, setLine] = useState(0);
+  const messages = [
+    { title: 'Welcome to LunaBase, Commander.', text: 'I’m Flight Director Chen at NASA Mission Control. Your crew is at the lunar south pole. Our goal is to keep everyone safe for 30 sols and complete the mission.' },
+    { title: 'Your base is a team of systems.', text: 'Solar panels make power. Power runs the water filter, air scrubber, and oxygen generator. Recovered water helps make oxygen; the base oxygen tank refills your spacesuit.' },
+    { title: 'Watch for special task days.', text: 'Today, Sol 1, repair the signal beacon so we can talk. Collect lunar ice on Sol 3 and repair the sparking solar array on Sol 4. These incidents repeat every five sols.' },
+    { title: 'Your crew needs careful planning.', text: 'Each completed task uses 1 stamina and 20 satiety. Five stamina points end the day. Eat meals to keep satiety up; below 50% means 1 less stamina tomorrow.' },
+    { title: 'Ready to explore?', text: 'Use WASD or the arrow keys to walk. Get close to a marker and press E. Press R near the habitat to go inside. Keep an eye on suit oxygen and return to refill.' },
+  ];
+  const current = messages[line];
+  return <div className="briefing-overlay rpg-overlay"><section className="briefing-dialog rpg-dialog" role="dialog" aria-modal="true" aria-labelledby="nasa-dialog-title"><div className="rpg-frame"><div className="rpg-portrait" aria-label="NASA mission controller portrait"><svg viewBox="0 0 80 80" role="img"><rect width="80" height="80" fill="#263d66"/><path fill="#101a31" d="M10 80V54h8V38h8V22h8V14h22v8h8v16h8v16h8v26z"/><path fill="#78c4d9" d="M18 28h8V18h8V10h20v8h8v10h8v14h-8v8H26v-8h-8z"/><path fill="#c9f3e8" d="M26 26h8v8h-8zm20 0h8v8h-8z"/><path fill="#14213c" d="M30 29h4v4h-4zm20 0h4v4h-4z"/><path fill="#e89d5b" d="M34 38h12v8H34zm-6-4h6v8h-6zm18 0h6v8h-6z"/><path fill="#e2e6f1" d="M22 52h36v6h8v22H14V58h8z"/><path fill="#7096bb" d="M34 58h12v8H34zM18 68h44v6H18z"/><path fill="#ffcf6c" d="M8 46h8v8H8zm56 0h8v8h-8z"/></svg></div><div className="rpg-text-panel"><div className="rpg-speaker">NASA MISSION CONTROL <span>FLIGHT DIRECTOR CHEN</span></div><div className="rpg-copy"><small>BRIEFING {line + 1} / {messages.length}</small><h1 id="nasa-dialog-title">{current.title}</h1><p>{current.text}</p></div><div className="rpg-dialog-footer"><span>{messages.map((item,index)=><i className={index===line?'active':''} key={item.title}/>)}</span><button onClick={() => line === messages.length - 1 ? onStart() : setLine((step)=>step+1)}>{line === messages.length - 1 ? 'START MISSION' : '▼ CONTINUE'}</button></div></div></div><small className="rpg-disclaimer">LUNABASE-01 · TRAINING TRANSMISSION · GAME ASSUMPTIONS</small></section></div>;
+}
+
+function SettlementReport({ game, onContinue }) {
+  const average = (key) => Math.round(game.crew.reduce((sum, member) => sum + member[key], 0) / game.crew.length);
+  const completed = [game.exploration.beacon, game.exploration.ice, game.exploration.powerRepair].filter(Boolean).length;
+  const checkpoint = game.day === 14;
+  return <div className="settlement-overlay"><section className="settlement-panel" role="dialog" aria-modal="true" aria-labelledby="settlement-title"><p className="eyebrow">LUNABASE-01 · FLIGHT DIRECTOR REPORT</p><h1 id="settlement-title">{checkpoint ? '14-Sol Mission Checkpoint' : `Sol ${game.day} Daily Settlement`}</h1><p className="settlement-lead">All stamina has been used. Review today’s resources, crew condition, and mission progress before continuing.</p><div className="settlement-grid"><article><small>BASE RESOURCES</small><b>O₂ {Math.round(game.resources.oxygen)} · Water {Math.round(game.resources.water)} · Food {Math.round(game.resources.food)}</b><b>Power {Math.round(game.resources.power)} · Used water {Math.round(game.resources.wastewater || 0)}</b></article><article><small>LIFE SUPPORT</small><b>Air {Math.round(game.systems.air)}% · Water recovery {Math.round(game.systems.water)}%</b><b>Oxygen generation {Math.round(game.systems.oxygen)}% · Equipment wear {Math.round(game.systems.wear)}%</b></article><article><small>CREW CHECK</small><b>Average health {average('health')}% · Psychology {average('morale')}%</b><b>Satiety {Math.round(game.satiety)}% · Suit oxygen {Math.round(game.suitOxygen)}%</b></article><article><small>MISSION PROGRESS</small><b>Incidents handled {completed}/3 · Rock samples {game.sampleCount || 0}</b><b>Earth link {game.systems.comms ? 'online' : 'offline'} · {checkpoint ? 'Next delivery: 126 food portions' : 'Next delivery at Sol 15'}</b></article></div><div className="settlement-tip">{game.resources.power < 25 || game.resources.oxygen < 25 ? 'Tip: Restore power or base oxygen before spending more time outside.' : game.satiety < 50 ? 'Tip: Eat a crew meal before continuing; low satiety reduces tomorrow’s stamina.' : 'Tip: Prepare water, power, and oxygen systems before the next surface excursion.'}</div><button className="settlement-continue" onClick={onContinue}>Continue to Sol {game.day + 1} <ChevronRight size={18}/></button><small className="settlement-note">Game values are illustrative. A food shipment arrives at the start of Sol 15.</small></section></div>;
+}
+
 export default function App() {
   const [game, setGame] = useState(loadSessionGame);
   const [briefingOpen, setBriefingOpen] = useState(() => !hasSavedSession());
@@ -97,12 +117,39 @@ export default function App() {
   const [baseMode, setBaseMode] = useState(false);
   const [dayTransition, setDayTransition] = useState(false);
   const [hqMessage, setHqMessage] = useState('No message sent yet. Restore the Signal Beacon to open the uplink.');
+  const [settlementOpen, setSettlementOpen] = useState(false);
+  const [settlementGame, setSettlementGame] = useState(null);
+  const [taskToast, setTaskToast] = useState('');
+  const [dayOneGuideDismissed, setDayOneGuideDismissed] = useState(false);
+  const [demoPlaying, setDemoPlaying] = useState(false);
+  const [demoStep, setDemoStep] = useState(-1);
+  const [demoStock, setDemoStock] = useState({ power: 45, raw: 10, water: 12, baseOxygen: 42, suitOxygen: 35, stamina: 5, satiety: 80 });
   useEffect(() => { try { sessionStorage.setItem(SAVE_KEY, JSON.stringify(game)); } catch { /* Session saving is optional in private browsing. */ } }, [game]);
   useEffect(() => {
+    if (!demoPlaying) return undefined;
+    const timer = window.setInterval(() => setDemoStep((step) => {
+      if (step >= 4) { setDemoPlaying(false); return 4; }
+      const next = step + 1;
+      setDemoStock((stock) => {
+        if (next === 0) return { ...stock, power: Math.min(100, stock.power + 20) };
+        if (next === 1) return { ...stock, power: Math.max(0, stock.power - 4), raw: Math.max(0, stock.raw - 5), water: Math.min(100, stock.water + 4) };
+        if (next === 2) return { ...stock, power: Math.max(0, stock.power - 5), water: Math.max(0, stock.water - 6), baseOxygen: Math.min(100, stock.baseOxygen + 18) };
+        if (next === 3) return { ...stock, baseOxygen: Math.max(0, stock.baseOxygen - 13), suitOxygen: 100 };
+        return { ...stock, stamina: Math.max(0, stock.stamina - 1), satiety: Math.max(0, stock.satiety - 20), suitOxygen: Math.max(0, stock.suitOxygen - 12) };
+      });
+      return next;
+    }), 1500);
+    return () => window.clearInterval(timer);
+  }, [demoPlaying]);
+  useEffect(() => {
     if (!dayTransition) return undefined;
-    const timer = window.setTimeout(() => { setGame((current) => takeAction({ ...current, stamina: 5 }, 'advance')); setDayTransition(false); }, 1700);
+    const timer = window.setTimeout(() => {
+      setSettlementGame(game);
+      setSettlementOpen(true);
+      setDayTransition(false);
+    }, 1700);
     return () => window.clearTimeout(timer);
-  }, [dayTransition]);
+  }, [dayTransition, game]);
   useEffect(() => { if (game.stamina <= 0 && !game.ended) setDayTransition(true); }, [game.ended, game.stamina]);
   useEffect(() => {
     if (game.suitOxygen <= 0 && !baseMode && !briefingOpen && !game.ended) {
@@ -121,7 +168,7 @@ export default function App() {
     window.addEventListener('keydown', handleBaseKey);
     return () => window.removeEventListener('keydown', handleBaseKey);
   }, [activeTask, baseMode, briefingOpen, game.ended, game.suitOxygen]);
-  const restart = () => { try { sessionStorage.removeItem(SAVE_KEY); } catch { /* Continue with an in-memory restart if storage is unavailable. */ } setGame(structuredClone(INITIAL_GAME)); setBriefingOpen(true); setDayTransition(false); setBaseMode(false); };
+  const restart = () => { try { sessionStorage.removeItem(SAVE_KEY); } catch { /* Continue with an in-memory restart if storage is unavailable. */ } setGame(structuredClone(INITIAL_GAME)); setBriefingOpen(true); setDayTransition(false); setBaseMode(false); setDayOneGuideDismissed(false); };
   const baseAction = (action) => {
     if (game.stamina <= 0 || dayTransition || game.ended) return;
     setGame((current) => {
@@ -140,6 +187,7 @@ export default function App() {
   };
   const completeBaseTask = () => { if (activeBaseTask === 'powerRepair') completeSite('powerRepair'); else if (activeBaseTask) baseAction(activeBaseTask); setActiveBaseTask(null); };
   const inspectSite = (site) => { const alreadyToday = site === 'ice' ? game.lastIceDay === game.day : site === 'beacon' ? game.lastBeaconDay === game.day : site === 'powerRepair' ? game.lastPowerRepairDay === game.day : false; if (!alreadyToday && availableTasks.includes(site) && game.suitOxygen >= 12 && game.stamina > 0) setActiveTask(site); };
+  const lowResourceTip = game.suitOxygen <= 20 ? 'Suit oxygen is low. Return to the habitat and refill before exploring.' : game.satiety < 50 ? 'Satiety is below 50%. Eat a crew meal to protect tomorrow’s stamina.' : game.resources.oxygen < 25 ? 'Base oxygen is low. Run the oxygen generator in the habitat.' : game.resources.power < 20 ? 'Power is low. Check the solar array and save electricity.' : '';
   const completeSite = (site) => {
     if (!baseMode && game.suitOxygen < 12) return;
     setGame((current) => {
@@ -158,6 +206,7 @@ export default function App() {
     };
     const reward = rewards[site];
     reward.apply();
+    setTaskToast(`${reward.title} · −1 stamina · −20 satiety${site === 'ice' ? ' · +15 raw water' : site === 'beacon' ? ' · +10 power · Earth link restored' : site === 'powerRepair' ? ' · +14 power · wear reduced' : ' · sample added'}`);
     next.log = [{ day: next.day, title: reward.title, detail: reward.detail, tone: 'good' }, ...next.log].slice(0, 5);
     return next;
     });
@@ -178,6 +227,9 @@ export default function App() {
     <main className={`game-layout ${dayTransition ? 'day-transitioning' : ''}`} id="top">
       {baseMode ? <HabitatInterior game={game} onAction={baseAction} onMiniGame={setActiveBaseTask} onLeave={() => setBaseMode(false)} lockedOutside={game.suitOxygen <= 0}/> : <><section className="game-view"><Moonwalk day={game.day} foundSites={visibleFoundSites} availableTasks={availableTasks} incident={incident} suitOxygen={game.suitOxygen} onStep={() => setGame((current) => ({ ...current, suitOxygen: Math.max(0, current.suitOxygen - 1) }))} onInteract={inspectSite} onEnterBase={() => setBaseMode(true)} disabled={Boolean(activeTask || briefingOpen || dayTransition)}/><div className="game-message"><span className="live-dot"/><span>{incident?.title || game.log[0]?.title}</span><i>{incident?.message || game.log[0]?.detail}</i></div></section>
       <aside className="game-sidebar">
+        {lowResourceTip && <div className="kid-alert" role="status"><span>💡</span><p><b>Mission tip</b><small>{lowResourceTip}</small></p><button onClick={() => setBaseMode(true)}>Go to base</button></div>}
+        {taskToast && <div className="task-toast" role="status">✨ {taskToast}<button onClick={() => setTaskToast('')} aria-label="Dismiss">×</button></div>}
+        {game.day === 1 && !dayOneGuideDismissed && <section className="day-one-guide"><div className="day-guide-title"><span>🚀</span><div><small>DAY 1 · LIVE DEMONSTRATION</small><h2>Watch the systems run</h2></div><button onClick={() => { setDemoPlaying(false); setDayOneGuideDismissed(true); }} aria-label="Close tutorial">×</button></div><div className={`demo-machine ${demoPlaying ? 'demo-machine-running' : ''}`}><div className="demo-machine-screen"><span>{demoPlaying ? 'SYSTEM ACTIVE' : demoStep === 4 ? 'FIELD TASK COMPLETE' : 'READY TO DEMONSTRATE'}</span><b>{['Solar array stores power','Water filter recovers clean water','Oxygen generator fills base tank','Suit dock fills the EVA suit','Astronaut explores and uses supplies'][Math.max(0, demoStep)]}</b><i>{demoPlaying ? '● LIVE' : 'LUNABASE-01'}</i></div><div className="demo-resource-grid">{[['⚡ Power',demoStock.power],['💧 Raw water',demoStock.raw],['🚰 Clean water',demoStock.water],['🫧 Base O₂',demoStock.baseOxygen],['🧑‍🚀 Suit O₂',demoStock.suitOxygen],['👣 Stamina',demoStock.stamina],['🍽 Satiety',demoStock.satiety]].map(([label,value])=><div key={label}><span>{label}</span><b>{label.includes('Stamina') ? `${value}/5` : `${value}%`}</b></div>)}</div><div className="demo-machine-action">{demoPlaying ? <><span className="demo-spinner"/> {['Panels turning toward sunlight…','Filter running · power −4 · clean water +4','Electrolysis running · water + power → oxygen','Dock transferring base oxygen to suit…','Astronaut walking to a lunar task…'][demoStep]}</> : demoStep === 4 ? 'The demo used a separate practice copy. Your mission resources are unchanged.' : 'Press play to see each machine work and watch the resource numbers change.'}</div></div><small className="day-guide-rule">This is a practice run: it does not change your real mission resources.</small><div className="day-guide-buttons"><button className="day-guide-dismiss" onClick={() => { setDemoStock({ power: 45, raw: 10, water: 12, baseOxygen: 42, suitOxygen: 35, stamina: 5, satiety: 80 }); setDemoStep(-1); setDemoPlaying(true); }}>{demoPlaying ? 'Restart demo' : demoStep === 4 ? 'Replay demo' : '▶ Play full demo'}</button><button className="day-guide-dismiss secondary" onClick={() => { setDemoPlaying(false); setDayOneGuideDismissed(true); }}>Got it — start Day 1</button></div></section>}
         <section className="game-info-card"><div className="game-card-heading"><span className="info-sigil"><Wind size={17}/></span><div><small>HABITAT LIFE SUPPORT</small><h2>ECLSS info</h2></div></div><p className="eclss-lead">ECLSS keeps the crew alive by recycling and managing the habitat’s essential resources.</p>
           <div className="eclss-row"><span className="eclss-icon water"><Droplets size={15}/></span><div><b>Water</b><small>Recover used water; lunar ice can replenish reserves.</small></div></div>
           <div className="eclss-row"><span className="eclss-icon oxygen"><Orbit size={15}/></span><div><b>Oxygen</b><small>Generate breathable oxygen from processed water.</small></div></div>
@@ -193,7 +245,8 @@ export default function App() {
         <p className="game-footnote">Educational game model · all values are illustrative, not NASA specifications.</p>
       </aside></>}
     </main>
-    {briefingOpen && <div className="briefing-overlay"><section className="briefing-dialog"><div className="briefing-orbit"><Moon size={26}/><span>✦</span></div><p className="eyebrow">LUNABASE · CREW BRIEFING</p><h1>How will your habitat<br/><em>stay alive?</em></h1><p className="briefing-copy">Before stepping onto the Moon, learn the essentials. ECLSS is the life-support system that helps your crew breathe, drink, and live inside the habitat.</p><div className="briefing-grid"><article><Droplets/><b>Water</b><span>Recover water, then scout for lunar ice to replenish it.</span></article><article><Orbit/><b>Oxygen</b><span>Use processed water to help generate breathable oxygen.</span></article><article><Wind/><b>Clean air</b><span>Filter cabin air and remove contaminants.</span></article><article><BatteryCharging/><b>Power</b><span>Keep life-support equipment and the habitat running.</span></article><article><Leaf/><b>Food</b><span>Protect crew supplies for each day on the surface.</span></article></div><div className="briefing-bottom"><span><Compass size={15}/> Explore 3 sites · complete your task list</span><button onClick={() => setBriefingOpen(false)}>Start exploring <ChevronRight size={16}/></button></div><small className="briefing-disclaimer">Simplified educational model. Resource values are game assumptions.</small></section></div>}
+    {briefingOpen && <DayOneConversation onStart={() => setBriefingOpen(false)}/>}
+    {settlementOpen && settlementGame && <SettlementReport game={settlementGame} onContinue={() => { setGame((current) => takeAction({ ...current, stamina: 5 }, 'advance')); setSettlementOpen(false); setSettlementGame(null); }}/ >}
     <MissionMinigame key={activeTask} task={activeTask} onComplete={() => completeSite(activeTask)} onClose={() => setActiveTask(null)}/>
     <MissionMinigame key={activeBaseTask} task={activeBaseTask} onComplete={completeBaseTask} onClose={() => setActiveBaseTask(null)}/>
     {dayTransition && <div className="day-transition-overlay"><div className="day-transition-card"><span>☾</span><p>SHIFT COMPLETE</p><h2>Sol {game.day} complete</h2><small>Resting the crew and preparing tomorrow's mission…</small><div className="day-transition-progress"><i/></div></div></div>}

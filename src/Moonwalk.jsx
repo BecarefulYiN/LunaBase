@@ -2,10 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import { BatteryCharging, Compass, Footprints, Orbit, Radio, Search, Snowflake } from './Icons.jsx';
 
 const SITES = [
-  { id: 'ice', name: 'Ice prospect', hint: 'Inspect the shadowed crater', x: 76, y: 30, icon: Snowflake, tone: 'ice' },
-  { id: 'sample', name: 'Rock sample', hint: 'Collect a surface sample', x: 34, y: 38, icon: Search, tone: 'sample' },
-  { id: 'beacon', name: 'Signal beacon', hint: 'Check the relay signal', x: 64, y: 75, icon: Radio, tone: 'beacon' },
-  { id: 'powerRepair', name: 'Sparking solar array', hint: 'Repair the power circuit', x: 21, y: 46, icon: BatteryCharging, tone: 'power-repair' },
+  { id: 'ice', name: 'Ice prospect', hint: 'Inspect the shadowed crater', fact: 'Deep polar craters can stay in permanent shadow, where water ice may be preserved.', x: 76, y: 30, icon: Snowflake, tone: 'ice' },
+  { id: 'sample', name: 'Rock sample', hint: 'Collect a surface sample', fact: 'Moon rocks and dust are called regolith. Samples help scientists study the Moon’s history.', x: 34, y: 38, icon: Search, tone: 'sample' },
+  { id: 'beacon', name: 'Signal beacon', hint: 'Check the relay signal', fact: 'A radio relay helps astronauts send voice and data when terrain blocks a direct link.', x: 64, y: 75, icon: Radio, tone: 'beacon' },
+  { id: 'powerRepair', name: 'Sparking solar array', hint: 'Repair the power circuit', fact: 'Solar panels turn sunlight into electricity. Damage or dust can reduce the power available to the base.', x: 21, y: 46, icon: BatteryCharging, tone: 'power-repair' },
 ];
 
 const DIRECTIONS = {
@@ -77,7 +77,7 @@ export default function Moonwalk({ day, foundSites, availableTasks = [], inciden
       <div className="world-rover"><span/><i/><b/></div>
       <div className="world-flag"><span/><i/></div>
       {SITES.filter((site) => availableTasks.includes(site.id)).map((site) => { const Icon = site.icon; const done = foundSites[site.id]; const isNear = near?.id === site.id; return <div className={`world-site ${site.tone} ${done ? 'site-done' : ''} ${isNear ? 'site-near' : ''}`} key={site.id} style={{ left: `${site.x}%`, top: `${site.y}%` }}>
-        <span className="site-pin"><Icon size={16}/>{done && site.id !== 'sample' && <b>✓</b>}</span><span className="site-label">{site.id === 'sample' ? `ROCK SAMPLE ×${foundSites.sampleCount || 0}` : done ? 'COMPLETE' : site.name.toUpperCase()}</span>{isNear && <span className="site-prompt">E</span>}
+        <span className="site-pin"><Icon size={16}/>{done && site.id !== 'sample' && <b>✓</b>}</span><span className="site-label">{site.id === 'sample' ? `ROCK SAMPLE ×${foundSites.sampleCount || 0}` : done ? 'COMPLETE' : site.name.toUpperCase()}</span>{isNear && <><span className="site-prompt">E</span><span className="site-fact"><b>SPACE FACT</b>{site.fact}</span></>}
       </div>; })}
       <div className={`astronaut facing-${walker.facing}`} style={{ left: `${walker.x}%`, top: `${walker.y}%` }} aria-label="Your astronaut">
         <span className={`astronaut-body ${walker.step % 2 ? 'step-a' : 'step-b'}`}><i className="astronaut-pack"/><i className="astronaut-helmet"><b/></i><i className="astronaut-suit"/><i className="astronaut-arm arm-left"/><i className="astronaut-arm arm-right"/><i className="astronaut-leg leg-left"/><i className="astronaut-leg leg-right"/></span>
