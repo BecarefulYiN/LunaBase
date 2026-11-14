@@ -4,12 +4,14 @@ import { BatteryCharging, ChevronRight, Droplets, Footprints, Radio, RotateCcw, 
 const DETAILS = {
   purifyWater: { title: 'Water recovery cycle', subtitle: 'Match each contaminant with the right filter.', Icon: Droplets, steps: ['Read the contaminant shown on the sample.', 'Choose the filter media that removes it.', 'Clear three samples to finish purification.'] },
   chargePower: { title: 'Solar array circuit', subtitle: 'Rotate the power couplers to route sunlight into the battery.', Icon: Sun, steps: ['Click the couplers to rotate them.', 'Connect the incoming solar line through all couplers.', 'Power reaches storage when the circuit is complete.'] },
+  powerRepair: { title: 'Solar array emergency repair', subtitle: 'Reconnect the damaged, branching circuit before the next power cycle.', Icon: BatteryCharging, steps: ['Inspect the four damaged junctions.', 'Rotate each elbow connector to match the branching route.', 'Reconnect all four junctions to clear the fault.'] },
   ice: { title: 'Water ice extraction', subtitle: 'Stabilize the heater, then collect a clean ice core.', Icon: Snowflake, steps: ['Watch the temperature needle sweep across the meter.', 'Click Collect ice core when the needle enters the green SAFE ZONE.', 'Too early or too late? Wait for the next pass and try again.'] },
   sample: { title: 'Moon-rock sample', subtitle: 'Memorize the scanner sequence and repeat it to reveal the rock core.', Icon: Search, steps: ['Watch the four scanner lights in order.', 'After they go dark, tap the matching colors in the same order.', 'When the rock appears in the tray, secure the sample to finish.'] },
   beacon: { title: 'Relay beacon repair', subtitle: 'Tune both signal bands to reconnect the outpost.', Icon: Radio, steps: ['Use − and + to adjust Channel 1 and Channel 2.', 'Match each dial to its target frequency number.', 'Press Lock signal when both channels line up.'] },
 };
 
 function TutorialVisual({ task }) {
+  if (task === 'powerRepair') return <div className="tutorial-stage tutorial-solar"><div className="tutorial-stage-caption">ARC FAULT · ROUTE POWER AROUND THE BREAK</div><div className="tutorial-flashes"><i>⚡</i><i>└</i><i>┬</i><i>▣</i></div><div className="tutorial-zone-label">BRANCHED CIRCUIT · ROTATE ELBOWS</div></div>;
   if (task === 'purifyWater') return <div className="tutorial-stage tutorial-water"><div className="tutorial-stage-caption">WATER LAB · MATCH POLLUTANT TO FILTER</div><div className="tutorial-flashes"><i>GRIT</i><i>OIL</i><i>SALT</i></div><div className="tutorial-zone-label">SAND · CARBON · MEMBRANE</div></div>;
   if (task === 'chargePower') return <div className="tutorial-stage tutorial-solar"><div className="tutorial-stage-caption">SOLAR ARRAY · CONNECT THE CIRCUIT</div><div className="tutorial-flashes"><i>☀</i><i>↻</i><i>▣</i></div><div className="tutorial-zone-label">ROTATE COUPLERS TO REACH BATTERY</div></div>;
   if (task === 'ice') return <div className="tutorial-stage tutorial-ice"><div className="tutorial-stage-caption">THERMAL DRILL · WATCH THE NEEDLE</div><div className="tutorial-heat"><span/><i/></div><div className="tutorial-zone-label">← WAIT FOR THE GREEN SAFE ZONE →</div></div>;
@@ -60,6 +62,16 @@ function SolarCircuitGame({ onComplete }) {
   return <div className="mini-game-content"><div className="mini-game-instruction"><Sun size={17}/><span>Turn each coupler to make its line horizontal and link the solar array to the battery.</span></div><div className="solar-circuit"><span className="solar-source">☀ SOLAR</span>{rotations.map((value, i) => <button key={i} onClick={() => rotate(i)} aria-label={`Coupler ${i + 1}: ${value % 2 ? 'vertical' : 'horizontal'}. Click to rotate`}><i className={value % 2 ? 'pipe-vertical' : 'pipe-horizontal'}/><small>{i + 1}</small></button>)}<span className="battery-target">▣ BATTERY</span></div><div className="solar-target"><span>REQUIRED PATH</span><b>← ━ ━ ━ →</b></div><p className="mini-feedback" aria-live="polite">{aligned}/3 couplers connected horizontally. Click a tile to rotate it.</p></div>;
 }
 
+function PowerRepairGame({ onComplete }) {
+  // Slots are ordered: top-left, top-right, bottom-left, bottom-right.
+  // The route runs from the array through all four elbow joints to the battery.
+  const target = [2, 1, 0, 3];
+  const [turns, setTurns] = useState([0, 0, 0, 0]);
+  const rotate = (index) => { const next = turns.map((value, i) => i === index ? (value + 1) % 4 : value); setTurns(next); if (next.every((value, i) => value === target[i])) onComplete(); };
+  const connected = turns.filter((turn, index) => turn === target[index]).length;
+  return <div className="mini-game-content"><div className="mini-game-instruction"><BatteryCharging size={17}/><span>Click each elbow to rotate it. Connect the array to the battery by matching the route.</span></div><div className="repair-board"><svg className="repair-route" viewBox="0 0 400 180" preserveAspectRatio="none" aria-hidden="true"><path d="M60 70 H110 V130 H270 V70 H380" /></svg><span className="repair-source">⚡ ARRAY</span>{turns.map((turn, i) => <button className={`repair-coupler ${turn === target[i] ? 'coupler-aligned' : ''}`} key={i} onClick={() => rotate(i)} aria-label={`Junction ${i + 1}, rotated ${turn} times. Click to rotate`}><i style={{ transform: `translate(-50%,-50%) rotate(${turn * 90}deg)` }} /><small>{i + 1}</small></button>)}<span className="repair-battery">▣ BATTERY</span></div><div className="repair-target-hint"><span>ROUTE</span><b>ARRAY → 1 ↓ 3 → 4 ↑ 2 → BATTERY</b></div><p className="mini-feedback" aria-live="polite">{connected}/4 junctions aligned · Rotate every elbow to light the complete circuit.</p></div>;
+}
+
 function SampleGame({ onComplete }) {
   const sequence = ['blue', 'amber', 'mint', 'blue'];
   const [showPattern, setShowPattern] = useState(true);
@@ -108,12 +120,13 @@ export default function MissionMinigame({ task, onComplete, onClose }) {
   const [started, setStarted] = useState(false);
   if (!task) return null;
   const detail = DETAILS[task];
-  const baseTask = task === 'purifyWater' || task === 'chargePower';
+  const baseTask = task === 'purifyWater' || task === 'chargePower' || task === 'powerRepair';
+  const staminaTask = true;
   const Icon = detail.Icon;
-  const Game = task === 'ice' ? IceGame : task === 'sample' ? SampleGame : task === 'beacon' ? BeaconGame : task === 'purifyWater' ? WaterFilterGame : SolarCircuitGame;
+  const Game = task === 'ice' ? IceGame : task === 'sample' ? SampleGame : task === 'beacon' ? BeaconGame : task === 'purifyWater' ? WaterFilterGame : task === 'powerRepair' ? PowerRepairGame : SolarCircuitGame;
   return <div className="minigame-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <section className="minigame-dialog" role="dialog" aria-modal="true" aria-labelledby="minigame-title"><button className="minigame-close" onClick={onClose} aria-label="Leave task"><X size={18}/></button>
-      <div className={`minigame-emblem ${task}`}><Icon size={22}/></div><p className="eyebrow">{baseTask ? 'HABITAT SYSTEM · LUNABASE-01' : 'FIELD TASK · LUNABASE-01'}</p><h2 id="minigame-title">{detail.title}</h2><p className="minigame-subtitle">{detail.subtitle}</p>{!baseTask && <div className="task-stamina-cost"><Footprints size={14}/> −25 stamina when this task is completed <b>·</b> <strong>MAX 100</strong></div>}
+      <div className={`minigame-emblem ${task}`}><Icon size={22}/></div><p className="eyebrow">{baseTask ? 'HABITAT SYSTEM · LUNABASE-01' : 'FIELD TASK · LUNABASE-01'}</p><h2 id="minigame-title">{detail.title}</h2><p className="minigame-subtitle">{detail.subtitle}</p>{staminaTask && <div className="task-stamina-cost"><Footprints size={14}/> −1 stamina when this task is completed <b>·</b> <strong>MAX 5 / DAY</strong></div>}
       {started ? <Game task={task} onComplete={onComplete}/> : <div className="task-tutorial"><TutorialVisual task={task}/><div className="tutorial-copy"><h3>How to complete this task</h3><ol>{detail.steps.map((step) => <li key={step}>{step}</li>)}</ol></div><button className="mini-primary tutorial-start" onClick={() => setStarted(true)}>Start mini-game <ChevronRight size={17}/></button></div>}
       <button className="mini-back" onClick={onClose}><RotateCcw size={13}/> {baseTask ? 'Return to habitat' : 'Return to surface'}</button>
     </section>

@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Compass, Footprints, Orbit, Radio, Search, Snowflake } from './Icons.jsx';
+import { BatteryCharging, Compass, Footprints, Orbit, Radio, Search, Snowflake } from './Icons.jsx';
 
 const SITES = [
   { id: 'ice', name: 'Ice prospect', hint: 'Inspect the shadowed crater', x: 76, y: 30, icon: Snowflake, tone: 'ice' },
   { id: 'sample', name: 'Rock sample', hint: 'Collect a surface sample', x: 34, y: 38, icon: Search, tone: 'sample' },
   { id: 'beacon', name: 'Signal beacon', hint: 'Check the relay signal', x: 64, y: 75, icon: Radio, tone: 'beacon' },
+  { id: 'powerRepair', name: 'Sparking solar array', hint: 'Repair the power circuit', x: 21, y: 46, icon: BatteryCharging, tone: 'power-repair' },
 ];
 
 const DIRECTIONS = {
@@ -14,7 +15,7 @@ const DIRECTIONS = {
   ArrowRight: [4, 0, 'right'], d: [4, 0, 'right'], D: [4, 0, 'right'],
 };
 
-export default function Moonwalk({ day, foundSites, onInteract, onEnterBase, suitOxygen = 100, onStep, disabled = false }) {
+export default function Moonwalk({ day, foundSites, availableTasks = [], incident, onInteract, onEnterBase, suitOxygen = 100, onStep, disabled = false }) {
   const [walker, setWalker] = useState({ x: 19, y: 59, facing: 'right', step: 0 });
   const walkerRef = useRef(walker);
   const move = (direction) => {
@@ -29,7 +30,7 @@ export default function Moonwalk({ day, foundSites, onInteract, onEnterBase, sui
   };
   const nearestSite = () => SITES
     .map((site) => ({ ...site, distance: Math.hypot(site.x - walkerRef.current.x, site.y - walkerRef.current.y) }))
-    .filter((site) => !foundSites[site.id] && site.distance < 14)
+    .filter((site) => availableTasks.includes(site.id) && !foundSites[site.id] && site.distance < 14)
     .sort((a, b) => a.distance - b.distance)[0];
   const nearBase = Math.hypot(walker.x - 15, walker.y - 35) < 20;
   const interact = () => {
@@ -59,23 +60,24 @@ export default function Moonwalk({ day, foundSites, onInteract, onEnterBase, sui
   }, [disabled, nearBase, onEnterBase, onInteract]);
 
   const near = nearestSite();
-  const foundCount = Object.values(foundSites).filter(Boolean).length;
+  const foundCount = Number(Boolean(foundSites.ice)) + Number((foundSites.sampleCount || 0) > 0) + Number(Boolean(foundSites.beacon));
   return <section className="moonwalk panel" aria-label="Lunar surface exploration game">
     <div className="moonwalk-header">
       <div><p className="eyebrow">SURFACE EXPLORATION · SOL {String(day).padStart(2, '0')}</p><h2>Moonwalk</h2><p className="moonwalk-subtitle">Step out of the habitat and explore the lunar terrain.</p></div>
       <div className="field-progress"><span className="field-progress-icon"><Compass size={16}/></span><span><b>{foundCount} / 3</b><small>FIELD OBJECTIVES</small></span></div>
     </div>
+    {incident && <div className="daily-incident"><span>⚠</span><div><b>DAY {day} INCIDENT · {incident.title}</b><small>{incident.message}</small></div></div>}
     {suitOxygen <= 20 && <div className={`suit-oxygen-alert ${suitOxygen <= 8 ? 'oxygen-critical' : ''}`} role="status"><Footprints size={17}/><span><b>{suitOxygen <= 8 ? 'Suit oxygen critical' : 'Suit oxygen low'}</b><small>{suitOxygen <= 8 ? 'Return now. At 0%, you will be moved back to the habitat.' : 'Head back to the habitat soon to refill before exploring further.'}</small></span><button onClick={onEnterBase} disabled={disabled}>R · Return to base</button></div>}
     <div className="moon-world" onClick={() => document.activeElement?.blur()}>
       <div className="world-stars">·　　✦　　　　　　·　　　✧　　　　·　　✦　　　　·</div>
       <div className="world-earth"><i/></div><div className="world-ridge ridge-one"/><div className="world-ridge ridge-two"/>
       <div className="world-ground"><span className="crater crater-one"/><span className="crater crater-two"/><span className="crater crater-three"/><span className="ground-glow"/></div>
       <div className={`world-base ${nearBase ? 'base-nearby' : ''}`}><span className="base-dome"/><span className="base-module"/><span className="base-window"/><span className="base-lamp"/><small>HAB 01</small>{nearBase && <button className="base-entry-button" onClick={(event) => { event.stopPropagation(); onEnterBase?.(); }} disabled={disabled}><Orbit size={15}/><span>R · Enter base</span></button>}</div>
-      <div className="world-solar-field" role="img" aria-label="Solar panel array powering the lunar habitat"><div className="world-solar-panel"><i/><i/><i/><i/><i/><i/><i/><i/></div><span className="solar-support"/><span className="solar-field-label">SOLAR ARRAY</span><span className="solar-glint"/></div>
+      <div className={`world-solar-field ${incident?.id === 'powerRepair' ? 'solar-field-fault' : ''}`} role="img" aria-label={incident?.id === 'powerRepair' ? 'Sparking solar panel array needs repair' : 'Solar panel array powering the lunar habitat'}><div className="world-solar-panel"><i/><i/><i/><i/><i/><i/><i/><i/></div><span className="solar-support"/><span className="solar-field-label">SOLAR ARRAY</span><span className="solar-glint"/>{incident?.id === 'powerRepair' && <b className="solar-spark">⚡</b>}</div>
       <div className="world-rover"><span/><i/><b/></div>
       <div className="world-flag"><span/><i/></div>
-      {SITES.map((site) => { const Icon = site.icon; const done = foundSites[site.id]; const isNear = near?.id === site.id; return <div className={`world-site ${site.tone} ${done ? 'site-done' : ''} ${isNear ? 'site-near' : ''}`} key={site.id} style={{ left: `${site.x}%`, top: `${site.y}%` }}>
-        <span className="site-pin"><Icon size={16}/>{done && <b>✓</b>}</span><span className="site-label">{done ? 'COMPLETE' : site.name.toUpperCase()}</span>{isNear && <span className="site-prompt">E</span>}
+      {SITES.filter((site) => availableTasks.includes(site.id)).map((site) => { const Icon = site.icon; const done = foundSites[site.id]; const isNear = near?.id === site.id; return <div className={`world-site ${site.tone} ${done ? 'site-done' : ''} ${isNear ? 'site-near' : ''}`} key={site.id} style={{ left: `${site.x}%`, top: `${site.y}%` }}>
+        <span className="site-pin"><Icon size={16}/>{done && site.id !== 'sample' && <b>✓</b>}</span><span className="site-label">{site.id === 'sample' ? `ROCK SAMPLE ×${foundSites.sampleCount || 0}` : done ? 'COMPLETE' : site.name.toUpperCase()}</span>{isNear && <span className="site-prompt">E</span>}
       </div>; })}
       <div className={`astronaut facing-${walker.facing}`} style={{ left: `${walker.x}%`, top: `${walker.y}%` }} aria-label="Your astronaut">
         <span className={`astronaut-body ${walker.step % 2 ? 'step-a' : 'step-b'}`}><i className="astronaut-pack"/><i className="astronaut-helmet"><b/></i><i className="astronaut-suit"/><i className="astronaut-arm arm-left"/><i className="astronaut-arm arm-right"/><i className="astronaut-leg leg-left"/><i className="astronaut-leg leg-right"/></span>

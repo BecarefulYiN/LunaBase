@@ -1,12 +1,18 @@
 // All quantities are illustrative game units, not NASA mission specifications.
 export const INITIAL_GAME = {
   day: 1,
-  stamina: 100,
+  stamina: 5,
+  foodModelVersion: 2,
   suitOxygen: 100,
   satiety: 100,
-  resources: { oxygen: 82, food: 76, power: 68, water: 54, wastewater: 12 },
+  resources: { oxygen: 82, food: 126, power: 68, water: 54, wastewater: 12 },
   systems: { water: 72, air: 84, oxygen: 62, wear: 18, comms: 0 },
-  exploration: { ice: false, sample: false, beacon: false },
+  exploration: { ice: false, sample: false, beacon: false, powerRepair: false },
+  sampleCount: 0,
+  lastIceDay: 0,
+  lastBeaconDay: 0,
+  lastPowerRepairDay: 0,
+  solarFault: false,
   crew: [
     { name: 'Maya Chen', role: 'Commander', health: 92, morale: 82, color: 'coral' },
     { name: 'Leo Park', role: 'Systems engineer', health: 86, morale: 74, color: 'blue' },
@@ -15,6 +21,14 @@ export const INITIAL_GAME = {
   log: [{ day: 1, title: 'Mission systems nominal', detail: 'Habitat checks complete. The crew is ready for the first surface survey.', tone: 'good' }],
   ended: null,
 };
+
+export function getIncidentForDay(day) {
+  const cycleDay = ((day - 1) % 5) + 1;
+  if (cycleDay === 1) return { id: 'beacon', title: 'Signal beacon fault', message: 'Relay signal is unstable. Repair it today to restore Earth contact and navigation support.' };
+  if (cycleDay === 3) return { id: 'ice', title: 'Ice sample window', message: 'A thermal scan found accessible ice. Collect raw material today for the water recovery system.' };
+  if (cycleDay === 4) return { id: 'powerRepair', title: 'Solar array electrical fault', message: 'The panel junction is sparking. Repair the circuit today to restore reliable power.' };
+  return null;
+}
 
 const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, value));
 
@@ -63,16 +77,22 @@ export function takeAction(game, action) {
     tone = 'neutral';
   } else if (action === 'advance') {
     next.day += 1;
+    next.solarFault = getIncidentForDay(next.day)?.id === 'powerRepair';
+    const supplyArrived = next.day > 1 && (next.day - 1) % 14 === 0;
+    if (supplyArrived) r.food = clamp(r.food + 126, 0, 252);
     r.oxygen = clamp(r.oxygen - 7 + Math.round(next.systems.oxygen * 0.08));
-    r.food = clamp(r.food - 5);
+    // Six portions cover two meals for the three-person crew. The Galley action
+    // can use three more portions for their third meal of the day.
+    r.food = clamp(r.food - 6);
     r.power = clamp(r.power - (next.systems.comms ? 4 : 5) + (next.systems.wear < 75 ? 2 : 0));
     r.water = clamp(r.water - 3 + Math.round(next.systems.water * 0.04));
     r.wastewater = clamp((r.wastewater || 0) + 2);
     next.systems.wear = clamp(next.systems.wear + (next.systems.comms ? 2 : 3));
     next.satiety = clamp(next.satiety - 25);
+    next.stamina = next.satiety < 50 ? 4 : 5;
     next.crew.forEach((person) => {
-      person.health = clamp(person.health - (r.oxygen < 25 || r.food < 20 || next.satiety < 25 ? 8 : 1) - (next.systems.air < 30 ? 4 : 0));
-      person.morale = clamp(person.morale - (next.systems.comms ? 3 : 5) - (r.food < 20 ? 3 : 0));
+      person.health = clamp(person.health - (r.oxygen < 25 || r.food < 20 || next.satiety < 25 ? 8 : 1) - (next.systems.air < 30 ? 4 : 0) - (next.systems.wear > 75 ? 2 : 0));
+      person.morale = clamp(person.morale - (next.systems.comms ? 3 : 5) - (r.food < 20 ? 3 : 0) - (person.morale < 30 ? 3 : 0));
     });
     // Running low on power reduces system performance, creating a resource trade-off.
     if (r.power < 18) {
@@ -83,7 +103,11 @@ export function takeAction(game, action) {
       next.systems.air = clamp(next.systems.air - (next.systems.wear > 75 ? 5 : 3));
     }
     title = `Sol ${next.day} systems report`;
-    message = 'Daily consumption tallied. Life-support performance and crew condition updated.';
+    message = supplyArrived
+      ? 'A 14-day food shipment arrived (126 meal portions). Daily use and life-support performance have been tallied.'
+      : next.satiety < 50
+        ? 'Daily use tallied. Low satiety (<50%) leaves the crew with 1 less stamina tomorrow.'
+        : 'Daily consumption tallied. Life-support performance and crew condition updated.';
     tone = r.oxygen < 25 || r.food < 20 || r.power < 18 ? 'warn' : 'neutral';
   }
 
@@ -113,15 +137,16 @@ export function manageBase(game, action) {
     title = 'Oxygen generator cycle complete';
     detail = 'Processed water and power were converted into stored habitat oxygen.';
   } else if (action === 'refillSuit') {
-    if (stock.oxygen < 12 || next.suitOxygen >= 100) return game;
-    stock.oxygen -= 12;
-    next.suitOxygen = clamp(next.suitOxygen + 30);
+    const refillCost = Math.ceil(stock.oxygen / 5);
+    if (next.suitOxygen >= 100 || stock.oxygen < refillCost) return game;
+    stock.oxygen -= refillCost;
+    next.suitOxygen = 100;
     title = 'Spacesuit oxygen topped up';
     detail = 'The suit tank was refilled from the habitat oxygen reserve.';
   } else if (action === 'eat') {
-    if (stock.food < 8 || next.satiety >= 100) return game;
-    stock.food -= 8;
-    next.satiety = clamp(next.satiety + 30);
+    if (stock.food < 3 || next.satiety >= 100) return game;
+    stock.food -= 3;
+    next.satiety = clamp(next.satiety + 40);
     title = 'Meal break';
     detail = 'The crew ate a ration and recovered some satiety.';
   } else if (action === 'purifyAir') {
@@ -138,7 +163,7 @@ export function manageBase(game, action) {
     title = 'Recovered water purified';
     detail = 'Game assumption: 5 units of collected wastewater yield 4 units of reusable clean water after filtration.';
   } else if (action === 'chargePower') {
-    if (stock.power >= 100) return game;
+    if (stock.power >= 100 || next.solarFault) return game;
     stock.power = clamp(stock.power + 20);
     title = 'Solar array charged habitat batteries';
     detail = 'Illustrative game action: the solar array added 20 units to stored power.';
