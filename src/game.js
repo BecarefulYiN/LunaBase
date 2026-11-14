@@ -1,6 +1,7 @@
 // All quantities are illustrative game units, not NASA mission specifications.
 export const INITIAL_GAME = {
   day: 1,
+  stamina: 100,
   resources: { oxygen: 82, food: 76, power: 68, water: 54 },
   systems: { water: 72, air: 84, oxygen: 62, wear: 18 },
   exploration: { ice: false, sample: false, beacon: false },

@@ -1,31 +1,41 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { BatteryCharging, Radio, RotateCcw, Search, Snowflake, X } from './Icons.jsx';
+import { BatteryCharging, ChevronRight, Footprints, Radio, RotateCcw, Search, Snowflake, X } from './Icons.jsx';
 
 const DETAILS = {
-  ice: { title: 'Water ice extraction', subtitle: 'Stabilize the heater, then collect a clean ice core.', Icon: Snowflake },
-  sample: { title: 'Moon-rock sample', subtitle: 'Memorize the scanner sequence and repeat it to reveal the rock core.', Icon: Search },
-  beacon: { title: 'Relay beacon repair', subtitle: 'Tune both signal bands to reconnect the outpost.', Icon: Radio },
+  ice: { title: 'Water ice extraction', subtitle: 'Stabilize the heater, then collect a clean ice core.', Icon: Snowflake, steps: ['Watch the temperature needle sweep across the meter.', 'Click Collect ice core when the needle enters the green SAFE ZONE.', 'Too early or too late? Wait for the next pass and try again.'] },
+  sample: { title: 'Moon-rock sample', subtitle: 'Memorize the scanner sequence and repeat it to reveal the rock core.', Icon: Search, steps: ['Watch the four scanner lights in order.', 'After they go dark, tap the matching colors in the same order.', 'When the rock appears in the tray, secure the sample to finish.'] },
+  beacon: { title: 'Relay beacon repair', subtitle: 'Tune both signal bands to reconnect the outpost.', Icon: Radio, steps: ['Use − and + to adjust Channel 1 and Channel 2.', 'Match each dial to its target frequency number.', 'Press Lock signal when both channels line up.'] },
 };
+
+function TutorialVisual({ task }) {
+  if (task === 'ice') return <div className="tutorial-stage tutorial-ice"><div className="tutorial-stage-caption">THERMAL DRILL · WATCH THE NEEDLE</div><div className="tutorial-heat"><span/><i/></div><div className="tutorial-zone-label">← WAIT FOR THE GREEN SAFE ZONE →</div></div>;
+  if (task === 'sample') return <div className="tutorial-stage tutorial-sample"><div className="tutorial-stage-caption">SCAN · REMEMBER · REPEAT</div><div className="tutorial-flashes"><i/><i/><i/><i/></div><div className="tutorial-rock">◆</div><div className="tutorial-zone-label">LIGHTS REVEAL THE ROCK CORE</div></div>;
+  return <div className="tutorial-stage tutorial-beacon"><div className="tutorial-stage-caption">SIGNAL RELAY · MATCH BOTH CHANNELS</div>{[1, 2].map((channel) => <div className="tutorial-dial" key={channel}><span>CH {channel}</span><div><i/></div><b>{channel === 1 ? '45' : '60'} MHz</b></div>)}<div className="tutorial-zone-label">− / + TUNE &nbsp; · &nbsp; LOCK SIGNAL</div></div>;
+}
 
 function IceGame({ onComplete }) {
   const [needle, setNeedle] = useState(8);
   const direction = useRef(1);
-  const [message, setMessage] = useState('Wait for the heat indicator to enter the green zone.');
+  const [lastAttempt, setLastAttempt] = useState(null);
+  const inSafeZone = needle >= 44 && needle <= 64;
   useEffect(() => {
     const timer = window.setInterval(() => setNeedle((value) => {
-      const next = value + direction.current * 2.2;
+      const next = value + direction.current * 1.35;
       if (next >= 96 || next <= 4) direction.current *= -1;
       return Math.max(4, Math.min(96, next));
-    }), 45);
+    }), 65);
     return () => window.clearInterval(timer);
   }, []);
   const collect = () => {
-    if (needle >= 45 && needle <= 62) onComplete();
-    else setMessage(needle < 45 ? 'Too cold. Let the heater warm the core a little more.' : 'Too hot. Wait for the temperature to settle back down.');
+    if (inSafeZone) onComplete();
+    else setLastAttempt(needle < 44 ? 'cold' : 'hot');
   };
-  return <div className="mini-game-content"><div className="mini-game-instruction"><Snowflake size={17}/><span>Keep the thermal drill inside its safe operating range.</span></div>
-    <div className="heat-meter"><div className="heat-cold"/><div className="heat-safe"/><div className="heat-hot"/><i style={{ left: `${needle}%` }}/></div><div className="heat-labels"><span>COLD</span><b>SAFE ZONE</b><span>HOT</span></div>
-    <p className="mini-feedback">{message}</p><button className="mini-primary" onClick={collect}><Snowflake size={16}/> Collect ice core</button></div>;
+  const status = inSafeZone ? 'Perfect window — collect now!' : needle < 44 ? 'Warming up · wait for the green zone.' : 'Cooling down · watch for the green zone.';
+  const message = inSafeZone ? status : lastAttempt === 'cold' ? 'That was a little early. The needle is still moving — try again in the green zone.' : lastAttempt === 'hot' ? 'That was a little late. Watch the needle come back around.' : status;
+  return <div className="mini-game-content"><div className="mini-game-instruction"><Snowflake size={17}/><span>Tap <b>Collect ice core</b> while the moving needle is in the green SAFE ZONE.</span></div>
+    <div className={`ice-readout ${inSafeZone ? 'ice-readout-ready' : ''}`}><span>DRILL TEMPERATURE</span><b>{Math.round(needle)}°</b><strong>{inSafeZone ? 'READY' : needle < 44 ? 'WARMING' : 'COOLING'}</strong></div>
+    <div className={`heat-meter ${inSafeZone ? 'heat-ready' : ''}`}><div className="heat-cold"/><div className="heat-safe"/><div className="heat-hot"/><i style={{ left: `${needle}%` }}/></div><div className="heat-labels"><span>COLD</span><b>SAFE ZONE</b><span>HOT</span></div>
+    <p className={`mini-feedback ${inSafeZone ? 'mini-feedback-ready' : ''}`} aria-live="polite">{message}</p><button className={`mini-primary ${inSafeZone ? 'ice-collect-ready' : ''}`} onClick={collect}><Snowflake size={16}/> {inSafeZone ? 'Collect ice core now' : 'Collect ice core'}</button></div>;
 }
 
 function SampleGame({ onComplete }) {
@@ -73,14 +83,16 @@ function BeaconGame({ onComplete }) {
 }
 
 export default function MissionMinigame({ task, onComplete, onClose }) {
+  const [started, setStarted] = useState(false);
   if (!task) return null;
   const detail = DETAILS[task];
   const Icon = detail.Icon;
   const Game = task === 'ice' ? IceGame : task === 'sample' ? SampleGame : BeaconGame;
   return <div className="minigame-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <section className="minigame-dialog" role="dialog" aria-modal="true" aria-labelledby="minigame-title"><button className="minigame-close" onClick={onClose} aria-label="Leave task"><X size={18}/></button>
-      <div className={`minigame-emblem ${task}`}><Icon size={22}/></div><p className="eyebrow">FIELD TASK · LUNABASE-01</p><h2 id="minigame-title">{detail.title}</h2><p className="minigame-subtitle">{detail.subtitle}</p>
-      <Game onComplete={onComplete}/><button className="mini-back" onClick={onClose}><RotateCcw size={13}/> Return to surface</button>
+      <div className={`minigame-emblem ${task}`}><Icon size={22}/></div><p className="eyebrow">FIELD TASK · LUNABASE-01</p><h2 id="minigame-title">{detail.title}</h2><p className="minigame-subtitle">{detail.subtitle}</p><div className="task-stamina-cost"><Footprints size={14}/> −25 stamina when this task is completed <b>·</b> <strong>MAX 100</strong></div>
+      {started ? <Game onComplete={onComplete}/> : <div className="task-tutorial"><TutorialVisual task={task}/><div className="tutorial-copy"><h3>How to complete this task</h3><ol>{detail.steps.map((step) => <li key={step}>{step}</li>)}</ol></div><button className="mini-primary tutorial-start" onClick={() => setStarted(true)}>Start mini-game <ChevronRight size={17}/></button></div>}
+      <button className="mini-back" onClick={onClose}><RotateCcw size={13}/> Return to surface</button>
     </section>
   </div>;
 }

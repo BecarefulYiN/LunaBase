@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowDownRight, ArrowUpRight, BatteryCharging, Check, ChevronRight, CircleHelp, Clock3, Compass, Droplets, Gauge, HeartPulse, Leaf, Menu, Moon, Orbit, Package, Play, RotateCcw, Shield, Sparkles, Sun, Wind, Wrench, X } from './Icons.jsx';
+import { ArrowDownRight, ArrowUpRight, BatteryCharging, Check, ChevronRight, CircleHelp, Clock3, Compass, Droplets, Footprints, Gauge, HeartPulse, Leaf, Menu, Moon, Orbit, Package, Play, RotateCcw, Shield, Sparkles, Sun, Wind, Wrench, X } from './Icons.jsx';
 import { INITIAL_GAME, takeAction } from './game.js';
 import Moonwalk from './Moonwalk.jsx';
 import MissionMinigame from './MissionMinigame.jsx';
@@ -97,6 +97,7 @@ export default function App() {
     if (current.exploration[site]) return current;
     const next = structuredClone(current);
     next.exploration[site] = true;
+    next.stamina = Math.max(0, current.stamina - 25);
     const rewards = {
       ice: { title: 'Ice deposit surveyed', detail: 'A promising ice reading was logged. Water stores and oxygen generation prospects improved.', apply: () => { next.resources.water = Math.min(100, next.resources.water + 14); next.systems.oxygen = Math.min(100, next.systems.oxygen + 4); } },
       sample: { title: 'Lunar sample collected', detail: 'The crew collected a rock sample. The field discovery lifted morale.', apply: () => next.crew.forEach((person) => { person.morale = Math.min(100, person.morale + 6); }) },
@@ -116,7 +117,7 @@ export default function App() {
   ];
   const completed = Object.values(game.exploration).filter(Boolean).length;
   return <div className="game-shell">
-    <header className="game-topbar"><a className="brand" href="#top" aria-label="LunaBase home"><span className="brand-mark"><Moon size={20}/><span/></span><span className="brand-word">luna<span>base</span><small>MOON EXPEDITION</small></span></a><div className="game-day"><span className="live-dot"/> SOL {String(game.day).padStart(2, '0')} <i>/</i> 30</div><div className="resource-strip"><div><Orbit size={15}/><span>O₂</span><b>{Math.round(game.resources.oxygen)}</b></div><div><Droplets size={15}/><span>H₂O</span><b>{Math.round(game.resources.water)}</b></div><div><BatteryCharging size={15}/><span>POWER</span><b>{Math.round(game.resources.power)}</b></div><div><Leaf size={15}/><span>FOOD</span><b>{Math.round(game.resources.food)}</b></div></div><button className="game-restart" onClick={restart}><RotateCcw size={14}/> Restart</button></header>
+    <header className="game-topbar"><a className="brand" href="#top" aria-label="LunaBase home"><span className="brand-mark"><Moon size={20}/><span/></span><span className="brand-word">luna<span>base</span><small>MOON EXPEDITION</small></span></a><div className="game-day"><span className="live-dot"/> SOL {String(game.day).padStart(2, '0')} <i>/</i> 30</div><div className="resource-strip"><div><Orbit size={15}/><span>O₂</span><b>{Math.round(game.resources.oxygen)}</b></div><div><Droplets size={15}/><span>H₂O</span><b>{Math.round(game.resources.water)}</b></div><div><BatteryCharging size={15}/><span>POWER</span><b>{Math.round(game.resources.power)}</b></div><div><Leaf size={15}/><span>FOOD</span><b>{Math.round(game.resources.food)}</b></div><div className="stamina-resource" title="Crew stamina out of 100"><Footprints size={15}/><span>STA</span><b>{game.stamina}</b><i><span style={{ width: `${game.stamina}%` }}/></i></div></div><button className="game-restart" onClick={restart}><RotateCcw size={14}/> Restart</button></header>
     <main className="game-layout" id="top">
       <section className="game-view"><Moonwalk day={game.day} foundSites={game.exploration} onInteract={inspectSite} disabled={Boolean(activeTask || briefingOpen)}/><div className="game-message"><span className="live-dot"/><span>{game.log[0]?.title}</span><i>{game.log[0]?.detail}</i></div></section>
       <aside className="game-sidebar">
@@ -127,7 +128,7 @@ export default function App() {
           <div className="eclss-row"><span className="eclss-icon power"><BatteryCharging size={15}/></span><div><b>Power</b><small>Run recovery, filtration, lights and equipment.</small></div></div>
           <div className="eclss-row"><span className="eclss-icon food"><Leaf size={15}/></span><div><b>Food</b><small>Keep the crew supplied throughout the mission.</small></div></div>
         </section>
-        <section className="task-card"><div className="task-heading"><div><small>MISSION OBJECTIVES</small><h2>Task list</h2></div><span>{completed}/{tasks.length}</span></div><div className="task-progress"><span style={{ width: `${completed / tasks.length * 100}%` }}/></div>{tasks.map((task, index) => <div className={`task-item ${game.exploration[task.id] ? 'task-complete' : ''}`} key={task.id}><span className="task-check">{game.exploration[task.id] ? '✓' : String(index + 1).padStart(2, '0')}</span><div><b>{task.title}</b><small>{game.exploration[task.id] ? 'Objective complete' : task.note}</small></div></div>)}
+        <section className="task-card"><div className="task-heading"><div><small>MISSION OBJECTIVES</small><h2>Task list</h2></div><span>{completed}/{tasks.length}</span></div><div className="task-progress"><span style={{ width: `${completed / tasks.length * 100}%` }}/></div>{tasks.map((task, index) => <div className={`task-item ${game.exploration[task.id] ? 'task-complete' : ''}`} key={task.id}><span className="task-check">{game.exploration[task.id] ? '✓' : String(index + 1).padStart(2, '0')}</span><div><b>{task.title}</b><small>{game.exploration[task.id] ? 'Objective complete · −25 stamina' : `${task.note} · −25 stamina on completion`}</small></div></div>)}<p className="stamina-note"><Footprints size={13}/> Starting stamina: 100 · each completed task uses 25</p>
           <button className="sol-button" onClick={advanceDay} disabled={game.ended}><Play size={14} fill="currentColor"/> Advance one sol</button><button className="ration-button" onClick={rationFood} disabled={game.ended}><Package size={14}/> Repack food supplies <span>+8 FOOD</span></button>
         </section>
         <div className="crew-status-bar"><HeartPulse size={15}/><span>Crew condition</span><b>{Math.round(game.crew.reduce((sum, person) => sum + person.health, 0) / game.crew.length)}%</b><i/><Sparkles size={14}/><b>{Math.round(game.crew.reduce((sum, person) => sum + person.morale, 0) / game.crew.length)}%</b></div>
@@ -135,7 +136,7 @@ export default function App() {
       </aside>
     </main>
     {briefingOpen && <div className="briefing-overlay"><section className="briefing-dialog"><div className="briefing-orbit"><Moon size={26}/><span>✦</span></div><p className="eyebrow">LUNABASE · CREW BRIEFING</p><h1>How will your habitat<br/><em>stay alive?</em></h1><p className="briefing-copy">Before stepping onto the Moon, learn the essentials. ECLSS is the life-support system that helps your crew breathe, drink, and live inside the habitat.</p><div className="briefing-grid"><article><Droplets/><b>Water</b><span>Recover water, then scout for lunar ice to replenish it.</span></article><article><Orbit/><b>Oxygen</b><span>Use processed water to help generate breathable oxygen.</span></article><article><Wind/><b>Clean air</b><span>Filter cabin air and remove contaminants.</span></article><article><BatteryCharging/><b>Power</b><span>Keep life-support equipment and the habitat running.</span></article><article><Leaf/><b>Food</b><span>Protect crew supplies for each day on the surface.</span></article></div><div className="briefing-bottom"><span><Compass size={15}/> Explore 3 sites · complete your task list</span><button onClick={() => setBriefingOpen(false)}>Start exploring <ChevronRight size={16}/></button></div><small className="briefing-disclaimer">Simplified educational model. Resource values are game assumptions.</small></section></div>}
-    <MissionMinigame task={activeTask} onComplete={() => completeSite(activeTask)} onClose={() => setActiveTask(null)}/>
+    <MissionMinigame key={activeTask} task={activeTask} onComplete={() => completeSite(activeTask)} onClose={() => setActiveTask(null)}/>
     <MissionResult outcome={game.ended} onRestart={restart}/>
   </div>;
 }
