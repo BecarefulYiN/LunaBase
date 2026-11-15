@@ -2,6 +2,8 @@
 export const INITIAL_GAME = {
   day: 1,
   stamina: 5,
+  foodReserve: 80,
+  lastRepackDay: null,
   suitOxygen: 100,
   satiety: 100,
   resources: { oxygen: 82, food: 76, power: 68, water: 54, wastewater: 12 },
@@ -57,11 +59,14 @@ export function takeAction(game, action) {
     title = 'Preventive maintenance complete';
     message = 'The crew serviced filters and seals. Equipment wear is down.';
   } else if (action === 'ration') {
-    r.food = clamp(r.food + 8);
-    next.crew.forEach((person) => { person.morale = clamp(person.morale - 7); });
-    title = 'Ration plan adjusted';
-    message = 'Stored meals were reorganized to stretch supplies. The crew would prefer a varied menu.';
-    tone = 'neutral';
+    if (!game.systems.comms || !game.exploration.beacon || game.lastRepackDay === game.day || game.stamina <= 0 || game.foodReserve <= 0 || r.food >= 100) return game;
+    const transferred = Math.min(8, game.foodReserve, 100 - r.food);
+    r.food += transferred;
+    next.foodReserve -= transferred;
+    next.lastRepackDay = game.day;
+    next.stamina -= 1;
+    next.log = appendLog(next, 'Earth-assisted food plan complete', `Mission control helped plan the inventory. Moved ${transferred} food units from onboard reserves into ready supplies; no food was delivered from Earth.`, 'good');
+    return next.stamina <= 0 ? takeAction(next, 'advance') : next;
   } else if (action === 'advance') {
     next.day += 1;
     next.stamina = 5;
@@ -92,7 +97,7 @@ export function takeAction(game, action) {
 
   next.log = appendLog(next, title, message, tone);
   next.ended = evaluate(next);
-  if (next.ended === 'won') next.log = appendLog(next, 'Mission accomplished!', 'The crew completed a 30-day lunar expedition. Everyone made it home safe.', 'good');
+  if (next.ended === 'won') next.log = appendLog(next, 'Mission accomplished!', 'The crew completed a 14-day lunar expedition. Everyone made it home safe.', 'good');
   if (next.ended === 'failed') {
     const relayMissing = next.day > 14 && !next.exploration.beacon;
     next.log = appendLog(next, 'Mission ended', relayMissing ? 'The mission reached its deadline without restoring the Earth communications and navigation relay.' : 'A critical supply or crew health reached zero. Review the timeline and try a new strategy.', 'bad');
