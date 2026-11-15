@@ -1,4 +1,4 @@
-import { createScannerSequence, createSignalChallenge } from './missionChallenges.js';
+import { createScannerSequence, createSignalChallenge, createIceChallenge, createSolarChallenge, createWaterChallenge } from './missionChallenges.js';
 import React, { useEffect, useRef, useState } from 'react';
 import { BatteryCharging, ChevronRight, Droplets, Footprints, Radio, RotateCcw, Search, Snowflake, Sun, X } from './Icons.jsx';
 
@@ -19,39 +19,54 @@ function TutorialVisual({ task }) {
 }
 
 function IceGame({ onComplete }) {
+  const [challenge] = useState(() => createIceChallenge());
+  const [slow, setSlow] = useState(false);
   const [needle, setNeedle] = useState(8);
   const direction = useRef(1);
   const [lastAttempt, setLastAttempt] = useState(null);
-  const inSafeZone = needle >= 44 && needle <= 64;
+  const inSafeZone = needle >= challenge.min && needle <= challenge.max;
   useEffect(() => {
     const timer = window.setInterval(() => setNeedle((value) => {
-      const next = value + direction.current * 1.35;
+      const next = value + direction.current * challenge.speed * (slow ? 0.5 : 1);
       if (next >= 96 || next <= 4) direction.current *= -1;
       return Math.max(4, Math.min(96, next));
     }), 65);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [challenge, slow]);
   const collect = () => {
     if (inSafeZone) onComplete();
-    else setLastAttempt(needle < 44 ? 'cold' : 'hot');
+    else setLastAttempt(needle < challenge.min ? 'cold' : 'hot');
   };
-  const status = inSafeZone ? 'Perfect window — collect now!' : needle < 44 ? 'Warming up · wait for the green zone.' : 'Cooling down · watch for the green zone.';
+  const status = inSafeZone ? 'Perfect window — collect now!' : needle < challenge.min ? 'Warming up · wait for the green zone.' : 'Cooling down · watch for the green zone.';
   const message = inSafeZone ? status : lastAttempt === 'cold' ? 'That was a little early. The needle is still moving — try again in the green zone.' : lastAttempt === 'hot' ? 'That was a little late. Watch the needle come back around.' : status;
   return <div className="mini-game-content"><div className="mini-game-instruction"><Snowflake size={17}/><span>Tap <b>Collect ice core</b> while the moving needle is in the green SAFE ZONE.</span></div>
-    <div className={`ice-readout ${inSafeZone ? 'ice-readout-ready' : ''}`}><span>DRILL TEMPERATURE</span><b>{Math.round(needle)}°</b><strong>{inSafeZone ? 'READY' : needle < 44 ? 'WARMING' : 'COOLING'}</strong></div>
-    <div className={`heat-meter ${inSafeZone ? 'heat-ready' : ''}`}><div className="heat-cold"/><div className="heat-safe"/><div className="heat-hot"/><i style={{ left: `${needle}%` }}/></div><div className="heat-labels"><span>COLD</span><b>SAFE ZONE</b><span>HOT</span></div>
-    <p className={`mini-feedback ${inSafeZone ? 'mini-feedback-ready' : ''}`} aria-live="polite">{message}</p><button className={`mini-primary ${inSafeZone ? 'ice-collect-ready' : ''}`} onClick={collect}><Snowflake size={16}/> {inSafeZone ? 'Collect ice core now' : 'Collect ice core'}</button></div>;
+    <div className={`ice-readout ${inSafeZone ? 'ice-readout-ready' : ''}`}><span>DRILL CONTROL (GAME SCALE)</span><b>{Math.round(needle)} / 100</b><strong>{inSafeZone ? 'READY' : needle < challenge.min ? 'WARMING' : 'COOLING'}</strong></div>
+    <div className={`heat-meter ${inSafeZone ? 'heat-ready' : ''}`} style={{background: `linear-gradient(90deg, #4d91b2 0%, #4d91b2 ${challenge.min}%, #72cba2 ${challenge.min}%, #72cba2 ${challenge.max}%, #bd6869 ${challenge.max}%, #bd6869 100%)`}}><div className="heat-cold"/><div className="heat-safe" style={{left: `${challenge.min}%`, right: `${100-challenge.max}%`}}/><div className="heat-hot"/><i style={{ left: `${needle}%` }}/></div><div className="heat-labels"><span>COLD</span><b>SAFE ZONE</b><span>HOT</span></div>
+    <button className="mini-back" aria-pressed={slow} onClick={() => setSlow(value => !value)}>{slow ? 'Slow mode on — use normal speed' : 'Need more time? Use slow mode'}</button><p className={`mini-feedback ${inSafeZone ? 'mini-feedback-ready' : ''}`} aria-live="polite">{message}</p><button className={`mini-primary ${inSafeZone ? 'ice-collect-ready' : ''}`} onClick={collect}><Snowflake size={16}/> {inSafeZone ? 'Collect ice core now' : 'Collect ice core'}</button></div>;
 }
 
 function WaterFilterGame({ onComplete }) {
-  const samples = [{ dirt: 'Grit', answer: 'sand' }, { dirt: 'Oil traces', answer: 'carbon' }, { dirt: 'Dissolved salts', answer: 'membrane' }];
-  const [round, setRound] = useState(0); const [message, setMessage] = useState('Select the filter that removes this contaminant.');
-  const choose = (filter) => { if (filter !== samples[round].answer) { setMessage('That filter will not remove this contaminant. Try another.'); return; } if (round === samples.length - 1) onComplete(); else { setRound(round + 1); setMessage('Good filter choice. Inspect the next water sample.'); } };
-  return <div className="mini-game-content"><div className="mini-game-instruction"><Droplets size={17}/><span>Sample {round + 1}/3 · Contaminant: <b>{samples[round].dirt}</b></span></div><div className="filter-choices">{[['sand','Sand bed','Catches grit'],['carbon','Activated carbon','Traps oils'],['membrane','Fine membrane','Removes dissolved salts']].map(([id,name,desc])=><button key={id} onClick={()=>choose(id)}><Droplets size={18}/><b>{name}</b><small>{desc}</small></button>)}</div><p className="mini-feedback" aria-live="polite">{message}</p></div>;
+  const [challenge] = useState(() => createWaterChallenge());
+  const { samples, choices } = challenge;
+  const [round, setRound] = useState(0);
+  const [correct, setCorrect] = useState(false);
+  const [message, setMessage] = useState('Select the treatment suited to this contaminant.');
+  const finished = useRef(false);
+  const choose = filter => {
+    if (correct) return;
+    if(filter !== samples[round].answer){ setMessage('Try another treatment. Look at what each option removes.'); return; }
+    setCorrect(true); setMessage(samples[round].explanation);
+  };
+  const next = () => {
+    if(!correct || finished.current) return;
+    if(round === samples.length-1){ finished.current=true; onComplete(); }
+    else {setRound(value=>value+1);setCorrect(false);setMessage('Inspect the next sample and select its treatment.');}
+  };
+  return <div className="mini-game-content"><div className="mini-game-instruction"><Droplets size={17}/><span>Sample {round+1}/{samples.length} — Contaminant: <b>{samples[round].dirt}</b></span></div><div className="filter-choices">{choices.map(([id,name,desc])=><button key={id} disabled={correct} onClick={()=>choose(id)}><Droplets size={18}/><b>{name}</b><small>{desc}</small></button>)}</div><p className="mini-feedback" aria-live="polite">{message}</p>{correct&&<button className="mini-primary" onClick={next}>{round===samples.length-1?'Finish calibration':'Next sample'}</button>}<small>Simplified treatment-matching exercise, not a complete drinking-water treatment procedure.</small></div>;
 }
 
 function SolarCircuitGame({ onComplete }) {
-  const [rotations, setRotations] = useState([1, 1, 1]);
+  const [rotations, setRotations] = useState(() => createSolarChallenge());
   const aligned = rotations.filter((value) => value % 2 === 0).length;
   const rotate = (index) => {
     const next = rotations.map((value, i) => i === index ? (value + 1) % 4 : value);

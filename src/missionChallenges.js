@@ -25,3 +25,26 @@ export function createFoodChallenge(target, day, random = Math.random) {
   for(let i=0;i<target;i++) goals[i<3?order[i]:Math.floor(random()*3)]++;
   return {...scenario,goals};
 }
+
+export function createIceChallenge(random = Math.random) {
+  const width = 20 + Math.floor(random()*9);
+  const min = 24 + Math.floor(random()*25);
+  return { min, max:min+width, speed:0.9+random()*0.6 };
+}
+export function createSolarChallenge(random = Math.random) {
+  // Three straight couplers: horizontal connects the fixed left-to-right path.
+  const rotations=Array.from({length:3},()=>Math.floor(random()*4));
+  if(rotations.every(n=>n%2===0)) rotations[Math.floor(random()*3)]=1;
+  return rotations;
+}
+
+export function createWaterChallenge(random = Math.random) {
+  const shuffle = values => { const result = [...values]; for(let i=result.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[result[i],result[j]]=[result[j],result[i]];} return result; };
+  const samples = shuffle([
+    { dirt:'Grit', answer:'sand', explanation:'A sand bed helps trap suspended grit. This stage alone does not make water safe to drink.' },
+    { dirt:'Oil traces', answer:'carbon', explanation:'Activated carbon can adsorb some organic contaminants. Real treatment depends on the contaminant and filter design.' },
+    { dirt:'Dissolved salts', answer:'membrane', explanation:'A suitable desalination membrane, such as reverse osmosis, can remove dissolved salts; ordinary particle filters cannot.' }
+  ]);
+  const choices = shuffle([['sand','Sand bed','Suspended particles'],['carbon','Activated carbon','Some organic contaminants'],['membrane','Desalination membrane','Dissolved salts']]);
+  return {samples,choices};
+}
