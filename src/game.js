@@ -1,6 +1,12 @@
+import { solarBlocked } from './accidents.js';
+export const MISSION_DAYS = 7;
 // All quantities are illustrative game units, not NASA mission specifications.
 export const INITIAL_GAME = {
   day: 1,
+  trainingComplete: false,
+  accident: null,
+  lastAccidentDay: null,
+  accidentsDone: [],
   stamina: 5,
   foodReserve: 80,
   lastRepackDay: null,
@@ -25,7 +31,7 @@ function evaluate(game) {
   const r = game.resources;
   if (game.crew.some((person) => person.health <= 0)) return 'failed';
   if (r.oxygen <= 0 || r.food <= 0 || r.power <= 0) return 'failed';
-  if (game.day > 14) return game.exploration.beacon ? 'won' : 'failed';
+  if (game.day > MISSION_DAYS) return game.exploration.beacon ? 'won' : 'failed';
   return null;
 }
 
@@ -34,7 +40,7 @@ function appendLog(game, title, detail, tone = 'neutral') {
 }
 
 export function takeAction(game, action) {
-  if (game.ended) return game;
+  if (game.ended || (action === 'advance' && game.accident)) return game;
   const next = structuredClone(game);
   let message = '';
   let title = '';
@@ -73,7 +79,7 @@ export function takeAction(game, action) {
     next.dailyFieldDone = {};
     r.oxygen = clamp(r.oxygen - 7 + Math.round(next.systems.oxygen * 0.08));
     r.food = clamp(r.food - 5);
-    r.power = clamp(r.power - (next.systems.comms ? 4 : 5) + (next.systems.wear < 75 ? 2 : 0));
+    r.power = clamp(r.power - (next.systems.comms ? 4 : 5) + (!solarBlocked(next) && next.systems.wear < 75 ? 2 : 0));
     r.water = clamp(r.water - 3 + Math.round(next.systems.water * 0.04));
     r.wastewater = clamp((r.wastewater || 0) + 2);
     next.systems.wear = clamp(next.systems.wear + (next.systems.comms ? 2 : 3));
@@ -97,9 +103,9 @@ export function takeAction(game, action) {
 
   next.log = appendLog(next, title, message, tone);
   next.ended = evaluate(next);
-  if (next.ended === 'won') next.log = appendLog(next, 'Mission accomplished!', 'The crew completed a 14-day lunar expedition. Everyone made it home safe.', 'good');
+  if (next.ended === 'won') next.log = appendLog(next, 'Mission accomplished!', 'The crew completed a 7-day lunar expedition. Everyone made it home safe.', 'good');
   if (next.ended === 'failed') {
-    const relayMissing = next.day > 14 && !next.exploration.beacon;
+    const relayMissing = next.day > MISSION_DAYS && !next.exploration.beacon;
     next.log = appendLog(next, 'Mission ended', relayMissing ? 'The mission reached its deadline without restoring the Earth communications and navigation relay.' : 'A critical supply or crew health reached zero. Review the timeline and try a new strategy.', 'bad');
   }
   return next;
@@ -147,7 +153,7 @@ export function manageBase(game, action) {
     title = 'Recovered water purified';
     detail = 'Game assumption: 5 units of collected wastewater yield 4 units of reusable clean water after filtration.';
   } else if (action === 'chargePower') {
-    if (stock.power >= 100) return game;
+    if (stock.power >= 100 || solarBlocked(game)) return game;
     stock.power = clamp(stock.power + 20);
     title = 'Solar array charged habitat batteries';
     detail = 'Illustrative game action: the solar array added 20 units to stored power.';

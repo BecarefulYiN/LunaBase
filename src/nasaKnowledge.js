@@ -1,4 +1,4 @@
-// NASA source summaries checked 2026-11-15; paraphrases, not quotations or live data.
+// Child-friendly paraphrases, not NASA quotations or live data. Sources checked 2026-11-15.
 export const NASA_KNOWLEDGE = {
   "ice": {
     "title": "Why search for lunar ice?",
@@ -10,7 +10,9 @@ export const NASA_KNOWLEDGE = {
         "title": "NASA Science — LCROSS mission record",
         "url": "https://science.nasa.gov/mission/lcross/"
       }
-    ]
+    ],
+    "simpleFact": "NASA found ice near the Moon’s south pole using a robot spacecraft.",
+    "simpleWhy": "Looking for ice helps us learn what resources are on the Moon."
   },
   "sample": {
     "title": "Why collect Moon rocks?",
@@ -22,7 +24,9 @@ export const NASA_KNOWLEDGE = {
         "title": "NASA — Apollo 11 Mission Overview",
         "url": "https://www.nasa.gov/missions/apollo/apollo-11-mission-overview/"
       }
-    ]
+    ],
+    "simpleFact": "Apollo astronauts brought Moon rocks and soil back to Earth.",
+    "simpleWhy": "Scientists can study these samples up close."
   },
   "beacon": {
     "title": "Why stay connected to Earth?",
@@ -34,7 +38,9 @@ export const NASA_KNOWLEDGE = {
         "title": "NASA — Space Communications and Navigation: Supporting Exploration",
         "url": "https://www.nasa.gov/directorates/somd/space-communications-navigation-program/nasa-space-communications-and-navigation-supporting-exploration/"
       }
-    ]
+    ],
+    "simpleFact": "NASA uses space networks to send messages and science results between space and Earth.",
+    "simpleWhy": "A working radio lets the crew share news and ask the ground team for help."
   },
   "purifyWater": {
     "title": "Why recover used water?",
@@ -46,7 +52,9 @@ export const NASA_KNOWLEDGE = {
         "title": "NASA — Environmental Control and Life Support Systems",
         "url": "https://www.nasa.gov/reference/environmental-control-and-life-support-systems-eclss/"
       }
-    ]
+    ],
+    "simpleFact": "On the space station, machines clean used water and check its quality.",
+    "simpleWhy": "Cleaning water lets astronauts use it again."
   },
   "chargePower": {
     "title": "Why store solar energy?",
@@ -58,7 +66,9 @@ export const NASA_KNOWLEDGE = {
         "title": "NASA — Solar Arrays on the International Space Station",
         "url": "https://www.nasa.gov/image-article/solar-arrays-international-space-station/"
       }
-    ]
+    ],
+    "simpleFact": "The space station uses sunlight to make electricity. It stores energy in batteries.",
+    "simpleWhy": "Batteries keep equipment running when sunlight is missing."
   },
   "food": {
     "title": "Why plan and pack space food?",
@@ -74,6 +84,8 @@ export const NASA_KNOWLEDGE = {
         "title": "NASA — Space Communications and Navigation: Supporting Exploration",
         "url": "https://www.nasa.gov/directorates/somd/space-communications-navigation-program/nasa-space-communications-and-navigation-supporting-exploration/"
       }
-    ]
+    ],
+    "simpleFact": "NASA plans space food to help astronauts stay healthy. Food must fit in limited storage space.",
+    "simpleWhy": "Careful packing helps a crew manage the food they already have."
   }
 };

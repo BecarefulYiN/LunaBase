@@ -1,3 +1,4 @@
+import MissionCoach from './MissionCoach.jsx';
 import NasaKnowledgeCard from './NasaKnowledgeCard.jsx';
 import { createScannerSequence, createSignalChallenge, createIceChallenge, createSolarChallenge, createWaterChallenge } from './missionChallenges.js';
 import React, { useEffect, useRef, useState } from 'react';
@@ -55,7 +56,7 @@ function WaterFilterGame({ onComplete }) {
   const finished = useRef(false);
   const choose = filter => {
     if (correct) return;
-    if(filter !== samples[round].answer){ setMessage('Try another treatment. Look at what each option removes.'); return; }
+    if(filter !== samples[round].answer){ setMessage('Let’s try another filter. Read what each one removes.'); return; }
     setCorrect(true); setMessage(samples[round].explanation);
   };
   const next = () => {
@@ -91,7 +92,7 @@ function SampleGame({ onComplete }) {
     if (color !== sequence[position]) {
       setPosition(0);
       setShowPattern(true);
-      setMessage('Sequence reset. Watch the lights and try again.');
+      setMessage('No worries! Watch my lights again, then try the same order.');
       window.setTimeout(() => { setShowPattern(false); setMessage('Now repeat the pattern.'); }, 1800);
       return;
     }
@@ -115,7 +116,7 @@ function BeaconGame({ onComplete }) {
   const tune = (index, delta) => setFreq((current) => current.map((value, i) => i === index ? Math.max(0, Math.min(100, value + delta)) : value));
   const connect = () => {
     if (freq[0] === targets[0] && freq[1] === targets[1]) onComplete();
-    else setMessage('Signal is still unstable. Adjust the dials and try again.');
+    else setMessage('Almost, explorer! Check both target numbers and try again.');
   };
   return <div className="mini-game-content"><div className="mini-game-instruction"><Radio size={17}/><span>Match both target frequencies to calibrate the relay. Targets change each mission. These are game values.</span></div>
     <div className="signal-dials">{freq.map((value, index) => <div className="signal-dial" key={index}><div className="dial-label"><span>CHANNEL {index + 1}</span><b>{targets[index]} MHz TARGET</b></div><div className="dial-scale"><span style={{ left: `${value}%` }}>{value} <small>MHz</small></span><i style={{ left: `${value}%` }}/><b style={{ left: `${targets[index]}%` }}/></div><div className="dial-controls"><button onClick={() => tune(index, -5)} aria-label={`Lower channel ${index + 1}`}>−</button><button onClick={() => tune(index, 5)} aria-label={`Raise channel ${index + 1}`}>+</button></div></div>)}</div>
@@ -135,7 +136,7 @@ export default function MissionMinigame({ task, onComplete, onClose }) {
   return <div className="minigame-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <section className="minigame-dialog" role="dialog" aria-modal="true" aria-labelledby="minigame-title"><button className="minigame-close" onClick={onClose} aria-label="Leave task"><X size={18}/></button>
       <div className={`minigame-emblem ${task}`}><Icon size={22}/></div><p className="eyebrow">{baseTask ? 'HABITAT SYSTEM · LUNABASE-01' : 'FIELD TASK · LUNABASE-01'}</p><h2 id="minigame-title">{detail.title}</h2><p className="minigame-subtitle">{detail.subtitle}</p>{!baseTask && <div className="task-stamina-cost"><Footprints size={14}/> −1 stamina when this task is completed <b>·</b> <strong>5 PER DAY</strong></div>}
-      {learning ? <><NasaKnowledgeCard task={task}/><button className="mini-primary" onClick={completeOnce}>Continue and complete task</button></> : started ? <Game task={task} onComplete={() => setLearning(true)}/> : <div className="task-tutorial"><TutorialVisual task={task}/><div className="tutorial-copy"><h3>How to complete this task</h3><ol>{detail.steps.map((step) => <li key={step}>{step}</li>)}</ol></div><button className="mini-primary tutorial-start" onClick={() => setStarted(true)}>Start mini-game <ChevronRight size={17}/></button></div>}
+      {learning ? <><NasaKnowledgeCard task={task}/><button className="mini-primary" onClick={completeOnce}>Continue and complete task</button></> : started ? <Game task={task} onComplete={() => setLearning(true)}/> : <div className="task-tutorial"><TutorialVisual task={task}/><div className="tutorial-copy"><MissionCoach title="I’ll show you how. Take it one step at a time."><ol>{detail.steps.map((step) => <li key={step}>{step}</li>)}</ol></MissionCoach></div><button className="mini-primary tutorial-start" onClick={() => setStarted(true)}>Start mini-game <ChevronRight size={17}/></button></div>}
       <button className="mini-back" onClick={onClose}><RotateCcw size={13}/> {baseTask ? 'Return to habitat' : 'Return to surface'}</button>
     </section>
   </div>;
