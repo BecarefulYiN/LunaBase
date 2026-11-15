@@ -1,3 +1,4 @@
+import { createScannerSequence, createSignalChallenge } from './missionChallenges.js';
 import React, { useEffect, useRef, useState } from 'react';
 import { BatteryCharging, ChevronRight, Droplets, Footprints, Radio, RotateCcw, Search, Snowflake, Sun, X } from './Icons.jsx';
 
@@ -14,7 +15,7 @@ function TutorialVisual({ task }) {
   if (task === 'chargePower') return <div className="tutorial-stage tutorial-solar"><div className="tutorial-stage-caption">SOLAR ARRAY · CONNECT THE CIRCUIT</div><div className="tutorial-flashes"><i>☀</i><i>↻</i><i>▣</i></div><div className="tutorial-zone-label">ROTATE COUPLERS TO REACH BATTERY</div></div>;
   if (task === 'ice') return <div className="tutorial-stage tutorial-ice"><div className="tutorial-stage-caption">THERMAL DRILL · WATCH THE NEEDLE</div><div className="tutorial-heat"><span/><i/></div><div className="tutorial-zone-label">← WAIT FOR THE GREEN SAFE ZONE →</div></div>;
   if (task === 'sample') return <div className="tutorial-stage tutorial-sample"><div className="tutorial-stage-caption">SCAN · REMEMBER · REPEAT</div><div className="tutorial-flashes"><i/><i/><i/><i/></div><div className="tutorial-rock">◆</div><div className="tutorial-zone-label">LIGHTS REVEAL THE ROCK CORE</div></div>;
-  return <div className="tutorial-stage tutorial-beacon"><div className="tutorial-stage-caption">SIGNAL RELAY · MATCH BOTH CHANNELS</div>{[1, 2].map((channel) => <div className="tutorial-dial" key={channel}><span>CH {channel}</span><div><i/></div><b>{channel === 1 ? '45' : '60'} MHz</b></div>)}<div className="tutorial-zone-label">− / + TUNE &nbsp; · &nbsp; LOCK SIGNAL</div></div>;
+  return <div className="tutorial-stage tutorial-beacon"><div className="tutorial-stage-caption">SIGNAL RELAY · MATCH BOTH CHANNELS</div>{[1, 2].map((channel) => <div className="tutorial-dial" key={channel}><span>CH {channel}</span><div><i/></div><b>TARGET</b></div>)}<div className="tutorial-zone-label">− / + TUNE &nbsp; · &nbsp; LOCK SIGNAL</div></div>;
 }
 
 function IceGame({ onComplete }) {
@@ -61,7 +62,7 @@ function SolarCircuitGame({ onComplete }) {
 }
 
 function SampleGame({ onComplete }) {
-  const sequence = ['blue', 'amber', 'mint', 'blue'];
+  const [sequence] = useState(() => createScannerSequence());
   const [showPattern, setShowPattern] = useState(true);
   const [position, setPosition] = useState(0);
   const [sampleReady, setSampleReady] = useState(false);
@@ -91,15 +92,16 @@ function SampleGame({ onComplete }) {
 }
 
 function BeaconGame({ onComplete }) {
-  const [freq, setFreq] = useState([20, 85]);
+  const [challenge] = useState(() => createSignalChallenge());
+  const [freq, setFreq] = useState(challenge.initial);
   const [message, setMessage] = useState('Tune both dials until their signals match the target bands.');
-  const targets = [45, 60];
+  const targets = challenge.targets;
   const tune = (index, delta) => setFreq((current) => current.map((value, i) => i === index ? Math.max(0, Math.min(100, value + delta)) : value));
   const connect = () => {
     if (freq[0] === targets[0] && freq[1] === targets[1]) onComplete();
     else setMessage('Signal is still unstable. Adjust the dials and try again.');
   };
-  return <div className="mini-game-content"><div className="mini-game-instruction"><Radio size={17}/><span>Match both receiver frequencies to restore the relay.</span></div>
+  return <div className="mini-game-content"><div className="mini-game-instruction"><Radio size={17}/><span>Match both target frequencies to calibrate the relay. Targets change each mission. These are game values.</span></div>
     <div className="signal-dials">{freq.map((value, index) => <div className="signal-dial" key={index}><div className="dial-label"><span>CHANNEL {index + 1}</span><b>{targets[index]} MHz TARGET</b></div><div className="dial-scale"><span style={{ left: `${value}%` }}>{value} <small>MHz</small></span><i style={{ left: `${value}%` }}/><b style={{ left: `${targets[index]}%` }}/></div><div className="dial-controls"><button onClick={() => tune(index, -5)} aria-label={`Lower channel ${index + 1}`}>−</button><button onClick={() => tune(index, 5)} aria-label={`Raise channel ${index + 1}`}>+</button></div></div>)}</div>
     <p className="mini-feedback">{message}</p><button className="mini-primary" onClick={connect}><BatteryCharging size={16}/> Lock signal</button></div>;
 }
