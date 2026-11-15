@@ -1,3 +1,4 @@
+import NasaKnowledgeCard from './NasaKnowledgeCard.jsx';
 import { createScannerSequence, createSignalChallenge, createIceChallenge, createSolarChallenge, createWaterChallenge } from './missionChallenges.js';
 import React, { useEffect, useRef, useState } from 'react';
 import { BatteryCharging, ChevronRight, Droplets, Footprints, Radio, RotateCcw, Search, Snowflake, Sun, X } from './Icons.jsx';
@@ -123,6 +124,9 @@ function BeaconGame({ onComplete }) {
 
 export default function MissionMinigame({ task, onComplete, onClose }) {
   const [started, setStarted] = useState(false);
+  const [learning, setLearning] = useState(false);
+  const completed = useRef(false);
+  const completeOnce = () => { if (completed.current) return; completed.current = true; onComplete(); };
   if (!task) return null;
   const detail = DETAILS[task];
   const baseTask = task === 'purifyWater' || task === 'chargePower';
@@ -130,8 +134,8 @@ export default function MissionMinigame({ task, onComplete, onClose }) {
   const Game = task === 'ice' ? IceGame : task === 'sample' ? SampleGame : task === 'beacon' ? BeaconGame : task === 'purifyWater' ? WaterFilterGame : SolarCircuitGame;
   return <div className="minigame-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <section className="minigame-dialog" role="dialog" aria-modal="true" aria-labelledby="minigame-title"><button className="minigame-close" onClick={onClose} aria-label="Leave task"><X size={18}/></button>
-      <div className={`minigame-emblem ${task}`}><Icon size={22}/></div><p className="eyebrow">{baseTask ? 'HABITAT SYSTEM · LUNABASE-01' : 'FIELD TASK · LUNABASE-01'}</p><h2 id="minigame-title">{detail.title}</h2><p className="minigame-subtitle">{detail.subtitle}</p>{!baseTask && <div className="task-stamina-cost"><Footprints size={14}/> −25 stamina when this task is completed <b>·</b> <strong>MAX 100</strong></div>}
-      {started ? <Game task={task} onComplete={onComplete}/> : <div className="task-tutorial"><TutorialVisual task={task}/><div className="tutorial-copy"><h3>How to complete this task</h3><ol>{detail.steps.map((step) => <li key={step}>{step}</li>)}</ol></div><button className="mini-primary tutorial-start" onClick={() => setStarted(true)}>Start mini-game <ChevronRight size={17}/></button></div>}
+      <div className={`minigame-emblem ${task}`}><Icon size={22}/></div><p className="eyebrow">{baseTask ? 'HABITAT SYSTEM · LUNABASE-01' : 'FIELD TASK · LUNABASE-01'}</p><h2 id="minigame-title">{detail.title}</h2><p className="minigame-subtitle">{detail.subtitle}</p>{!baseTask && <div className="task-stamina-cost"><Footprints size={14}/> −1 stamina when this task is completed <b>·</b> <strong>5 PER DAY</strong></div>}
+      {learning ? <><NasaKnowledgeCard task={task}/><button className="mini-primary" onClick={completeOnce}>Continue and complete task</button></> : started ? <Game task={task} onComplete={() => setLearning(true)}/> : <div className="task-tutorial"><TutorialVisual task={task}/><div className="tutorial-copy"><h3>How to complete this task</h3><ol>{detail.steps.map((step) => <li key={step}>{step}</li>)}</ol></div><button className="mini-primary tutorial-start" onClick={() => setStarted(true)}>Start mini-game <ChevronRight size={17}/></button></div>}
       <button className="mini-back" onClick={onClose}><RotateCcw size={13}/> {baseTask ? 'Return to habitat' : 'Return to surface'}</button>
     </section>
   </div>;
